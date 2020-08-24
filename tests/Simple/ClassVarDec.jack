@@ -1,0 +1,6 @@
+class main { 
+  static int x;
+  field int y;
+  static int x1;
+  field int y1;
+}

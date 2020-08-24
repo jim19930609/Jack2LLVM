@@ -1,0 +1,117 @@
+grammar Jack;
+
+/* ------------------- */
+/* Class Level Grammar */
+/* ------------------- */
+
+classDec       : 'class' className '{' classVarDec* subroutineDec* '}';
+
+classVarDec    : CLASSDECORATOR type varName (',' varName)* ';';
+
+type           : VARTYPES
+               | className
+               ;
+
+subroutineDec  : ('constructor'|'function'|'method') ('void'|type) subroutineName '(' parameterList ')' subroutineBody;
+
+parameterList  : ((type varName) (',' type varName)*)?;
+
+subroutineBody : '{' varDec* statements '}';
+
+varDec         : 'var' type varName (',' varName)* ';';
+
+className      : ID;
+subroutineName : ID;
+varName        : ID;
+
+/* ------------------------ */
+/* Statements Level Grammar */
+/* ------------------------ */
+statements      : statement*;
+
+statement       : letStatement
+                | ifStatement
+                | whileStatement
+                | doStatement
+                | returnStatement
+                ;
+
+letStatement    : 'let' varName ('[' expression ']')? '=' expression ';';
+
+ifStatement     : 'if' '(' expression ')' '{' statements '}' ('else' '{' statements '}')?;
+
+whileStatement  : 'while' '(' expression ')' '{' statements '}';
+
+doStatement     : 'do' subroutineCall;
+
+returnStatement : 'return' expression? ';';
+
+/* ------------------------ */
+/* Expression Level Grammar */
+/* ------------------------ */
+
+expression      : term (OP term)*;
+
+term            : INTEGER
+                | STRING
+                | KEYWORD
+                | varName
+                | varName '[' expression ']'
+                | subroutineCall
+                | '{' expression '}'
+                | UNARYOP term
+                ;
+
+subroutineCall  : subroutineName '(' expressionList ')'
+                | (className|varName)'.'subroutineName '(' expressionList ')'
+                ;
+
+expressionList  : (expression (',' expression)*)?;
+
+/* ----------- */
+/* Terminators */
+/* ----------- */
+
+VARTYPES       : 'int'
+               | 'char'
+               | 'boolean'
+               ;
+
+CLASSDECORATOR : 'static'
+               | 'field'
+               ;
+
+OP      : '+'
+        | '-'
+        | '*'
+        | '/'
+        | '&'
+        | '|'
+        | '<'
+        | '>'
+        | '='
+        ;
+
+UNARYOP : '-'
+        | '~'
+        ;
+
+KEYWORD : 'true'
+        | 'false'
+        | 'null'
+        | 'this'
+        ;
+
+INTEGER : [0-9]+;
+STRING  : '"' ~('\r'|'\n'|'"')* '"';
+ID      : [a-zA-Z_][a-zA-Z_0-9]*;
+
+/* -------------------------- */
+/* Skip WhiteSpace & Comments */
+/* -------------------------- */
+
+WS           : [ \n\t\r]+ -> skip;
+COMMENT      : '/*' .*? '*/' -> skip;
+LINE_COMMENT : '//' ~[\r\n]* -> skip;
+
+
