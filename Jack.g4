@@ -12,7 +12,7 @@ type           : VARTYPES
                | className
                ;
 
-subroutineDec  : ('constructor'|'function'|'method') ('void'|type) subroutineName '(' parameterList ')' subroutineBody;
+subroutineDec  : SUBROUTINEDECORATOR ('void'|type) subroutineName '(' parameterList ')' subroutineBody;
 
 parameterList  : ((type varName) (',' type varName)*)?;
 
@@ -80,6 +80,11 @@ VARTYPES       : 'int'
 CLASSDECORATOR : 'static'
                | 'field'
                ;
+
+SUBROUTINEDECORATOR : 'constructor'
+                    | 'function'
+                    | 'method'
+                    ;
 
 OP      : '+'
         | '-'
