@@ -18,33 +18,17 @@ class  JackRealVisitor : public JackVisitor {
 public:
 
   virtual antlrcpp::Any visitClassDec(JackParser::ClassDecContext *ctx) override;
-
   virtual antlrcpp::Any visitClassVarDec(JackParser::ClassVarDecContext *ctx) override;
-
   virtual antlrcpp::Any visitType(JackParser::TypeContext *ctx) override;
-  
-  virtual antlrcpp::Any visitClassName(JackParser::ClassNameContext *ctx) override;
-  
-  virtual antlrcpp::Any visitVarName(JackParser::VarNameContext *ctx) override;
+  virtual antlrcpp::Any visitSubroutineDec(JackParser::SubroutineDecContext *ctx) override;
+  virtual antlrcpp::Any visitParameterList(JackParser::ParameterListContext *ctx) override;
 
-  virtual antlrcpp::Any visitSubroutineDec(JackParser::SubroutineDecContext *ctx) override {
-    return visitChildren(ctx);
-  }
-
-  virtual antlrcpp::Any visitParameterList(JackParser::ParameterListContext *ctx) override {
-    return visitChildren(ctx);
-  }
 
   virtual antlrcpp::Any visitSubroutineBody(JackParser::SubroutineBodyContext *ctx) override {
     return visitChildren(ctx);
   }
 
   virtual antlrcpp::Any visitVarDec(JackParser::VarDecContext *ctx) override {
-    return visitChildren(ctx);
-  }
-
-
-  virtual antlrcpp::Any visitSubroutineName(JackParser::SubroutineNameContext *ctx) override {
     return visitChildren(ctx);
   }
 
@@ -91,6 +75,11 @@ public:
   virtual antlrcpp::Any visitExpressionList(JackParser::ExpressionListContext *ctx) override {
     return visitChildren(ctx);
   }
+  
+  // Identifiers, Names...
+  virtual antlrcpp::Any visitSubroutineName(JackParser::SubroutineNameContext *ctx) override;
+  virtual antlrcpp::Any visitClassName(JackParser::ClassNameContext *ctx) override;
+  virtual antlrcpp::Any visitVarName(JackParser::VarNameContext *ctx) override;
 
   JackRealVisitor() {
     // Suppose we only handle one single module
