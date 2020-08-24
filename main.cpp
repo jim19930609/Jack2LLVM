@@ -16,7 +16,7 @@ static void throw_with_message(std::string message) {
 
 int main(int argc, const char *args[])
 {
-    std::ifstream InFile("tests/Simple/ClassVarDec.jack");
+    std::ifstream InFile(args[1]);
     if(!InFile.is_open()) throw_with_message("Unable to open file");
 
     antlr4::ANTLRInputStream input(InFile); 

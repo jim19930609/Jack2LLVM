@@ -1,0 +1,12 @@
+class first { 
+  static int x;
+  field int y;
+  static int x1;
+  field int y1;
+}
+
+class second { 
+  static int x;
+  field int y;
+  first z;
+}

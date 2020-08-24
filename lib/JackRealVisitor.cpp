@@ -50,13 +50,24 @@ antlrcpp::Any JackRealVisitor::visitClassDec(JackParser::ClassDecContext *ctx) {
   for(const auto& kv : field_class_vars) {
     struct_members.push_back(kv.second);
   }
-  llvm::StructType::create(this->Context, struct_members, class_name_text, true);
-  
+  llvm::StructType* registered_class_type = llvm::StructType::create(this->Context, struct_members, class_name_text, true);
+  assert(registered_class_type && "Unable to create class StructType during ClassDec");
+
   // As for static vars
   // register a global var with class_name prefix in LLVM::Module
-  size_t num_static_class_vars = static_class_vars.size();
-  if(num_static_class_vars > 0) {
+  for(const auto& kv : static_class_vars) {
+    llvm::Type* global_type = kv.second;
+    std::string global_name = kv.first;
+    // Apply special prefix to static member var
+    // Then make it a global var
+    global_name = class_name_text + "." + global_name;
+    llvm::Constant* declared_global_var = this->Module->getOrInsertGlobal(global_name, global_type);
+    assert(declared_global_var && "Unable to register static member as global variable");
   }
+
+  // ------------------- //
+  // Parse SubroutineDec //
+  // ------------------- //
 
   /*
   std::vector<Type *> Contents = {Type::getDoubleTy(Context), Type::getVoidTy(Context)};
