@@ -8,9 +8,7 @@
 antlrcpp::Any JackRealVisitor::visitClassDec(JackParser::ClassDecContext *ctx) {
   // Class Name
   JackParser::ClassNameContext* class_name_ctx = ctx->className();
-  antlr4::tree::TerminalNode* class_name = class_name_ctx->ID();
-  antlr4::Token* class_name_tok = class_name->getSymbol();
-  std::string class_name_text = class_name_tok->getText();
+  std::string class_name_text = this->visitClassName(class_name_ctx);
 
   // ClassDec Members
   const std::vector<JackParser::ClassVarDecContext *>& class_var_decs = ctx->classVarDec();
@@ -92,9 +90,32 @@ antlrcpp::Any JackRealVisitor::visitClassVarDec(JackParser::ClassVarDecContext *
   // --------------------- //
   // Find out the type
   // then create LLVM::Type correspondingly
-  JackParser::TypeContext* type = ctx->type();
-  antlr4::tree::TerminalNode* var_type = type->VARTYPES();
-  JackParser::ClassNameContext* class_type = type->className();
+  JackParser::TypeContext* type_ctx = ctx->type();
+  llvm::Type* varType = this->visitType(type_ctx);
+
+  // ----------------------- //
+  // Construct return Vector //
+  // ----------------------- //
+  // vector = { {'static'/'field', nullptr}, {varname, type}, ... }
+  std::vector<std::pair<std::string, llvm::Type*>> class_vars = { {tok_text, nullptr} };
+
+  // Find out class variable name
+  std::vector<JackParser::VarNameContext*> var_name_ctxs = ctx->varName();
+  for(const auto var_name_ctx : var_name_ctxs) {
+    std::string var_name_str = this->visitVarName(var_name_ctx);
+    // Append {name, type} pairs to return vector
+    class_vars.emplace_back(std::make_pair(var_name_str, varType));
+  }
+
+  return class_vars;
+}
+
+antlrcpp::Any JackRealVisitor::visitType(JackParser::TypeContext *ctx) {
+  // --------------------------- //
+  // Parse and return llvm::Type //
+  // --------------------------- //
+  antlr4::tree::TerminalNode* var_type = ctx->VARTYPES();
+  JackParser::ClassNameContext* class_type_ctx = ctx->className();
 
   llvm::Type* varType;
   if(var_type) {
@@ -114,11 +135,9 @@ antlrcpp::Any JackRealVisitor::visitClassVarDec(JackParser::ClassVarDecContext *
       assert(false && "Class variable basic types can only be 'int', 'char' or 'boolean'");
     }
 
-  } else if(class_type) {
+  } else if(class_type_ctx) {
     // Get registered llvm::structType from llvm::Module
-    antlr4::tree::TerminalNode* identifier = class_type->ID();
-    antlr4::Token* identifier_tok = identifier->getSymbol();
-    std::string identifier_text = identifier_tok->getText();
+    std::string identifier_text = this->visitClassName(class_type_ctx);
     
     varType = this->Module->getTypeByName(identifier_text);
     assert(varType && "Class identifier used before declared");
@@ -126,24 +145,22 @@ antlrcpp::Any JackRealVisitor::visitClassVarDec(JackParser::ClassVarDecContext *
   } else {
     assert(false && "Class variable type has to be either 'var_type' or 'class_type'");
   }
-
-  // ----------------------- //
-  // Construct return Vector //
-  // ----------------------- //
-  // vector = { {'static'/'field', nullptr}, {varname, type}, ... }
-  std::vector<std::pair<std::string, llvm::Type*>> class_vars = { {tok_text, nullptr} };
-
-  // Find out class variable name
-  std::vector<JackParser::VarNameContext*> var_name_ctxs = ctx->varName();
-  for(const auto var_name_ctx : var_name_ctxs) {
-    antlr4::tree::TerminalNode* var_name = var_name_ctx->ID();
-    antlr4::Token* var_name_tok = var_name -> getSymbol();
-    std::string var_name_str = var_name_tok->getText();
-    
-    // Append {name, type} pairs to return vector
-    class_vars.emplace_back(std::make_pair(var_name_str, varType));
-  }
-
-  return class_vars;
+  
+  return varType;
 }
 
+antlrcpp::Any JackRealVisitor::visitClassName(JackParser::ClassNameContext *ctx) {
+  // Parse and return variable name in std::string
+  antlr4::tree::TerminalNode* class_name = ctx->ID();
+  antlr4::Token* class_name_tok = class_name->getSymbol();
+  std::string class_name_text = class_name_tok->getText();
+  return class_name_text;
+}
+
+antlrcpp::Any JackRealVisitor::visitVarName(JackParser::VarNameContext *ctx) {
+  // Parse and return variable name in std::string
+  antlr4::tree::TerminalNode* var_name = ctx->ID();
+  antlr4::Token* var_name_tok = var_name -> getSymbol();
+  std::string var_name_str = var_name_tok->getText();
+  return var_name_str;
+}

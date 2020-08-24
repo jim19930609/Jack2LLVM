@@ -21,9 +21,11 @@ public:
 
   virtual antlrcpp::Any visitClassVarDec(JackParser::ClassVarDecContext *ctx) override;
 
-  virtual antlrcpp::Any visitType(JackParser::TypeContext *ctx) override {
-    return visitChildren(ctx);
-  }
+  virtual antlrcpp::Any visitType(JackParser::TypeContext *ctx) override;
+  
+  virtual antlrcpp::Any visitClassName(JackParser::ClassNameContext *ctx) override;
+  
+  virtual antlrcpp::Any visitVarName(JackParser::VarNameContext *ctx) override;
 
   virtual antlrcpp::Any visitSubroutineDec(JackParser::SubroutineDecContext *ctx) override {
     return visitChildren(ctx);
@@ -41,15 +43,8 @@ public:
     return visitChildren(ctx);
   }
 
-  virtual antlrcpp::Any visitClassName(JackParser::ClassNameContext *ctx) override {
-    return visitChildren(ctx);
-  }
 
   virtual antlrcpp::Any visitSubroutineName(JackParser::SubroutineNameContext *ctx) override {
-    return visitChildren(ctx);
-  }
-
-  virtual antlrcpp::Any visitVarName(JackParser::VarNameContext *ctx) override {
     return visitChildren(ctx);
   }
 
