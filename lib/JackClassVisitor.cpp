@@ -114,7 +114,8 @@ antlrcpp::Any JackRealVisitor::visitSubroutineDec(JackParser::SubroutineDecConte
   // Create Function
   llvm::FunctionType *FT = llvm::FunctionType::get(return_type, argument_list.first, false);
   llvm::Function *F = llvm::Function::Create(FT, llvm::Function::ExternalLinkage, subroutine_name_text, this->Module.get());
-  
+  this->currentFunction = F;
+
   // Set Argument names
   size_t Idx = 0;
   for (auto &Arg : F->args())
@@ -152,6 +153,7 @@ antlrcpp::Any JackRealVisitor::visitParameterList(JackParser::ParameterListConte
 
 
 antlrcpp::Any JackRealVisitor::visitSubroutineBody(JackParser::SubroutineBodyContext *ctx) {
+  llvm::Function* F = this->currentFunction;
   // ----------------- //
   // Contruct symtab_l //
   // ----------------- //
@@ -160,11 +162,16 @@ antlrcpp::Any JackRealVisitor::visitSubroutineBody(JackParser::SubroutineBodyCon
   // ---------------- //
   // Parse statements //
   // ---------------- //
+  // 1. Add entry BB
+  llvm::BasicBlock* BB = llvm::BasicBlock::Create(this->Context, "entry", F);
+  this->Builder->SetInsertPoint(BB);
   
+  // 2. Call visitStatements()
+  JackParser::StatementsContext* statements_ctx = ctx->statements();
+  this->visitStatements(statements_ctx);
 
+  return nullptr;
 }
-
-
 
 
 /* ------------------------ Visit Variables/Types ------------------------ */

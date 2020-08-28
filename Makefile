@@ -14,12 +14,18 @@ LLVMINCLUDE=`llvm-config --cxxflags`
 LLVMLINK=`llvm-config --ldflags --system-libs --libs core`
 
 runtime: libdirs $(MAIN).cpp
+	# basic lexer & parser
 	$(CC) $(CCARGS) $(GENERATED)/$(GRAMMAR)Lexer.cpp -o $(OUTPUT)/$(GRAMMAR)Lexer.o 
 	$(CC) $(CCARGS) $(GENERATED)/$(GRAMMAR)Parser.cpp -o $(OUTPUT)/$(GRAMMAR)Parser.o 
-	$(CC) $(CCARGS) $(GENERATED)/$(GRAMMAR)Visitor.cpp -o $(OUTPUT)/$(GRAMMAR)Visitor.o 
-	$(CC) $(CCARGS) $(LLVMINCLUDE) $(GENERATED)/$(GRAMMAR)RealVisitor.cpp -o $(OUTPUT)/$(GRAMMAR)RealVisitor.o 
+	$(CC) $(CCARGS) $(GENERATED)/$(GRAMMAR)Visitor.cpp -o $(OUTPUT)/$(GRAMMAR)Visitor.o
+
+	# visitor lib
+	$(CC) $(CCARGS) $(LLVMINCLUDE) $(GENERATED)/$(GRAMMAR)StatementVisitor.cpp -o $(OUTPUT)/$(GRAMMAR)StatementVisitor.o
+	$(CC) $(CCARGS) $(LLVMINCLUDE) $(GENERATED)/$(GRAMMAR)ClassVisitor.cpp -o $(OUTPUT)/$(GRAMMAR)ClassVisitor.o
+	
+	# main lib
 	$(CC) $(CCARGS) $(LLVMINCLUDE) $(MAIN).cpp  -o $(OUTPUT)/$(MAIN).o 
-	$(CC) $(LDARGS) $(LLVMLINK) $(OUTPUT)/$(MAIN).o $(OUTPUT)/$(GRAMMAR)RealVisitor.o $(OUTPUT)/$(GRAMMAR)Lexer.o $(OUTPUT)/$(GRAMMAR)Visitor.o $(OUTPUT)/$(GRAMMAR)Parser.o $(LIBS) -o $(MAIN).out
+	$(CC) $(LDARGS) $(LLVMLINK) $(OUTPUT)/$(MAIN).o $(OUTPUT)/$(GRAMMAR)ClassVisitor.o $(OUTPUT)/$(GRAMMAR)StatementVisitor.o $(OUTPUT)/$(GRAMMAR)Lexer.o $(OUTPUT)/$(GRAMMAR)Visitor.o $(OUTPUT)/$(GRAMMAR)Parser.o $(LIBS) -o $(MAIN).out
 
 gen: dirs $(GRAMMAR).g4
 	$(ANTLR) -Dlanguage=Cpp -o $(GENERATED) $(GRAMMAR).g4 -no-listener -visitor

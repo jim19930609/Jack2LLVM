@@ -25,9 +25,7 @@ public:
   virtual antlrcpp::Any visitSubroutineBody(JackParser::SubroutineBodyContext *ctx) override;
 
 
-  virtual antlrcpp::Any visitStatements(JackParser::StatementsContext *ctx) override {
-    return visitChildren(ctx);
-  }
+  virtual antlrcpp::Any visitStatements(JackParser::StatementsContext *ctx) override;
 
   virtual antlrcpp::Any visitStatement(JackParser::StatementContext *ctx) override {
     return visitChildren(ctx);
@@ -88,7 +86,9 @@ private:
 
   std::shared_ptr<llvm::Module> Module;
   std::shared_ptr<llvm::IRBuilder<>> Builder;
-  
+
+  llvm::Function* currentFunction;
+
   class Symtab {
     public:
       void reset() {};
