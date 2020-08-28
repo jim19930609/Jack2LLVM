@@ -22,15 +22,8 @@ public:
   virtual antlrcpp::Any visitType(JackParser::TypeContext *ctx) override;
   virtual antlrcpp::Any visitSubroutineDec(JackParser::SubroutineDecContext *ctx) override;
   virtual antlrcpp::Any visitParameterList(JackParser::ParameterListContext *ctx) override;
+  virtual antlrcpp::Any visitSubroutineBody(JackParser::SubroutineBodyContext *ctx) override;
 
-
-  virtual antlrcpp::Any visitSubroutineBody(JackParser::SubroutineBodyContext *ctx) override {
-    return visitChildren(ctx);
-  }
-
-  virtual antlrcpp::Any visitVarDec(JackParser::VarDecContext *ctx) override {
-    return visitChildren(ctx);
-  }
 
   virtual antlrcpp::Any visitStatements(JackParser::StatementsContext *ctx) override {
     return visitChildren(ctx);
@@ -80,6 +73,7 @@ public:
   virtual antlrcpp::Any visitSubroutineName(JackParser::SubroutineNameContext *ctx) override;
   virtual antlrcpp::Any visitClassName(JackParser::ClassNameContext *ctx) override;
   virtual antlrcpp::Any visitVarName(JackParser::VarNameContext *ctx) override;
+  virtual antlrcpp::Any visitVarDec(JackParser::VarDecContext *ctx) override;
 
   JackRealVisitor() {
     // Suppose we only handle one single module
@@ -94,12 +88,34 @@ private:
 
   std::shared_ptr<llvm::Module> Module;
   std::shared_ptr<llvm::IRBuilder<>> Builder;
+  
+  class Symtab {
+    public:
+      void reset() {};
+      void insert() {};
+      void get() {};
+    private:
+      //Storage Type
+
+  };
 
   // ------- //
   // Symtabs //
   // ------- //
-  // registered_classes
-  // { class_name : structType }
-  std::unordered_map<std::string, llvm::StructType*> registered_classes;
+  // global variables: symtab_g
+  // -contain 'static' variables
+  // -reset with Module creation
+  Symtab symtab_g;
+  
+  // class variables : symtab_c
+  // -contain 'field' variables
+  // -reset with ClassDec
+  Symtab symtab_c;
+  
+  // local variables : symtab_l
+  // -contain 'local' and 'argument' variables
+  // -reset with SubroutineDec
+  Symtab symtab_l;
+  
 };
 

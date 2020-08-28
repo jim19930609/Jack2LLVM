@@ -1,7 +1,6 @@
 
 // Generated from Jack.g4 by ANTLR 4.8
 
-
 #include "JackRealVisitor.h"
 #include "llvm/IR/Type.h"
 
@@ -77,6 +76,126 @@ antlrcpp::Any JackRealVisitor::visitClassDec(JackParser::ClassDecContext *ctx) {
   return nullptr;
 }
 
+
+antlrcpp::Any JackRealVisitor::visitSubroutineDec(JackParser::SubroutineDecContext *ctx) {
+  // ------------------------ //
+  // Parse function decorator //
+  // ------------------------ //
+  // 'constructor', 'function', 'method'
+  // This influence the argument list and subroutineBody
+  antlr4::tree::TerminalNode* subroutine_decorator = ctx->SUBROUTINEDECORATOR();
+  antlr4::Token* subroutine_decorator_tok = subroutine_decorator->getSymbol();
+  std::string subroutine_decorator_text = subroutine_decorator_tok->getText();
+  
+  // --------------- //
+  // Subroutine Name //
+  // --------------- //
+  JackParser::SubroutineNameContext* subroutine_name_ctx = ctx->subroutineName();
+  std::string subroutine_name_text = this->visitSubroutineName(subroutine_name_ctx);
+
+  // ----------------- //
+  // Parse return type //
+  // ----------------- //
+  // Default return type is void
+  llvm::Type* return_type = llvm::Type::getVoidTy(this->Context);
+  JackParser::TypeContext* return_type_ctx = ctx->type();
+  if(return_type_ctx) {
+    return_type = this->visitType(return_type_ctx);
+  }
+  
+  // ------------------ //
+  // Construct Function //
+  // ------------------ //
+  // Construct parameter list
+  // visitParameterList() returns vector of arguments llvm::Type
+  JackParser::ParameterListContext* parameter_list_ctx = ctx->parameterList();
+  std::pair<std::vector<llvm::Type*>, std::vector<std::string>> argument_list = this->visitParameterList(parameter_list_ctx);
+
+  // Create Function
+  llvm::FunctionType *FT = llvm::FunctionType::get(return_type, argument_list.first, false);
+  llvm::Function *F = llvm::Function::Create(FT, llvm::Function::ExternalLinkage, subroutine_name_text, this->Module.get());
+  
+  // Set Argument names
+  size_t Idx = 0;
+  for (auto &Arg : F->args())
+    Arg.setName(argument_list.second[Idx++]);
+
+  // ------------------- //
+  // Add Subroutine Body //
+  // ------------------- //
+  // Setup SubroutineBodyContext
+  // and then call visitSubroutineBody()
+  JackParser::SubroutineBodyContext* subroutine_body_ctx= ctx->subroutineBody();
+  this->visitSubroutineBody(subroutine_body_ctx);
+  
+  return nullptr;
+}
+
+
+antlrcpp::Any JackRealVisitor::visitParameterList(JackParser::ParameterListContext *ctx) {
+  std::vector<llvm::Type*> types;
+  std::vector<std::string> names;
+  
+  std::vector<JackParser::TypeContext*> type_ctxs = ctx->type();
+  std::vector<JackParser::VarNameContext*> var_name_ctxs = ctx->varName();
+  for(size_t i=0; i<type_ctxs.size(); i++) {
+    // Parse Type
+    llvm::Type* argType = this->visitType(type_ctxs[i]);
+    types.emplace_back(argType);
+
+    std::string var_name_str = this->visitVarName(var_name_ctxs[i]);
+    names.emplace_back(var_name_str);
+  }
+
+  return std::make_pair(types, names);
+}
+
+
+antlrcpp::Any JackRealVisitor::visitSubroutineBody(JackParser::SubroutineBodyContext *ctx) {
+  // ----------------- //
+  // Contruct symtab_l //
+  // ----------------- //
+  
+  
+  // ---------------- //
+  // Parse statements //
+  // ---------------- //
+  
+
+}
+
+
+
+
+/* ------------------------ Visit Variables/Types ------------------------ */
+
+antlrcpp::Any JackRealVisitor::visitVarDec(JackParser::VarDecContext *ctx) {
+  // --------------------- //
+  // Resolve variable type //
+  // --------------------- //
+  // Find out the type
+  // then create LLVM::Type correspondingly
+  JackParser::TypeContext* type_ctx = ctx->type();
+  llvm::Type* varType = this->visitType(type_ctx);
+
+  // ----------------------- //
+  // Construct return Vector //
+  // ----------------------- //
+  // vector = { {'static'/'field', nullptr}, {varname, type}, ... }
+  std::vector<std::pair<std::string, llvm::Type*>> local_vars;
+
+  // Find out class variable name
+  std::vector<JackParser::VarNameContext*> var_name_ctxs = ctx->varName();
+  for(const auto var_name_ctx : var_name_ctxs) {
+    std::string var_name_str = this->visitVarName(var_name_ctx);
+    // Append {name, type} pairs to return vector
+    local_vars.emplace_back(std::make_pair(var_name_str, varType));
+  }
+
+  return local_vars;
+}
+
+
 antlrcpp::Any JackRealVisitor::visitClassVarDec(JackParser::ClassVarDecContext *ctx) {
   // ------------------------------- //
   // Resolve Decorator: statis/field //
@@ -109,6 +228,7 @@ antlrcpp::Any JackRealVisitor::visitClassVarDec(JackParser::ClassVarDecContext *
 
   return class_vars;
 }
+
 
 antlrcpp::Any JackRealVisitor::visitType(JackParser::TypeContext *ctx) {
   // --------------------------- //
@@ -149,53 +269,6 @@ antlrcpp::Any JackRealVisitor::visitType(JackParser::TypeContext *ctx) {
   return varType;
 }
 
-antlrcpp::Any JackRealVisitor::visitSubroutineDec(JackParser::SubroutineDecContext *ctx) {
-  // ------------------------ //
-  // Parse function decorator //
-  // ------------------------ //
-  // 'constructor', 'function', 'method'
-  // This influence the argument list and subroutineBody
-  antlr4::tree::TerminalNode* subroutine_decorator = ctx->SUBROUTINEDECORATOR();
-  antlr4::Token* subroutine_decorator_tok = subroutine_decorator->getSymbol();
-  std::string subroutine_decorator_text = subroutine_decorator_tok->getText();
-  
-  // --------------- //
-  // Subroutine Name //
-  // --------------- //
-  JackParser::SubroutineNameContext* subroutine_name_ctx = ctx->subroutineName();
-  std::string subroutine_name_text = this->visitSubroutineName(subroutine_name_ctx);
-
-  // ----------------- //
-  // Parse return type //
-  // ----------------- //
-  // Default return type is void
-  llvm::Type* return_type = llvm::Type::getVoidTy(this->Context);
-  JackParser::TypeContext* return_type_ctx = ctx->type();
-  if(return_type_ctx) {
-    return_type = this->visitType(return_type_ctx);
-  }
-  
-  // ------------------ //
-  // Construct Function //
-  // ------------------ //
-  // Construct parameter list
-  // visitParameterList() returns vector of arguments llvm::Type
-  JackParser::ParameterListContext* parameter_list_ctx = ctx->parameterList();
-  std::vector<llvm::Type*> argument_list = this->visitParameterList(parameter_list_ctx);
-
-  // Create Function
-  llvm::FunctionType *FT = llvm::FunctionType::get(return_type, argument_list, false);
-  llvm::Function *F = llvm::Function::Create(FT, llvm::Function::ExternalLinkage, subroutine_name_text, this->Module.get());
-
-  // ------------------- //
-  // Add Subroutine Body //
-  // ------------------- //
-  
-}
-
-antlrcpp::Any JackRealVisitor::visitParameterList(JackParser::ParameterListContext *ctx) {
-  
-}
 
 antlrcpp::Any JackRealVisitor::visitClassName(JackParser::ClassNameContext *ctx) {
   // Parse and return variable name in std::string
@@ -205,6 +278,7 @@ antlrcpp::Any JackRealVisitor::visitClassName(JackParser::ClassNameContext *ctx)
   return class_name_text;
 }
 
+
 antlrcpp::Any JackRealVisitor::visitVarName(JackParser::VarNameContext *ctx) {
   // Parse and return variable name in std::string
   antlr4::tree::TerminalNode* var_name = ctx->ID();
@@ -212,6 +286,7 @@ antlrcpp::Any JackRealVisitor::visitVarName(JackParser::VarNameContext *ctx) {
   std::string var_name_str = var_name_tok->getText();
   return var_name_str;
 }
+
 
 antlrcpp::Any JackRealVisitor::visitSubroutineName(JackParser::SubroutineNameContext *ctx) {
   antlr4::tree::TerminalNode* subroutine_name = ctx->ID();
