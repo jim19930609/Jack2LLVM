@@ -41,16 +41,26 @@ antlrcpp::Any JackRealVisitor::visitClassDec(JackParser::ClassDecContext *ctx) {
     }
   }
   
-  // For field vars
+  // ---------- //
+  // Field Vars //
+  // ---------- //
   // register a struct type in llvm::Module
   std::vector<llvm::Type*> struct_members;
-  for(const auto& kv : field_class_vars) {
-    struct_members.push_back(kv.second);
+  this->visitorHelper.symtab_c.clear();
+  for(size_t i=0; i<field_class_vars.size(); i++) {
+    std::string name = field_class_vars[i].first;
+    llvm::Type*  type = field_class_vars[i].second;
+    // Declare Struct in Module
+    struct_members.push_back(type);
+    // Add to symbol table
+    this->visitorHelper.symtab_c[name] = i;
   }
   llvm::StructType* registered_class_type = llvm::StructType::create(this->Context, struct_members, class_name_text, true);
   assert(registered_class_type && "Unable to create class StructType during ClassDec");
 
-  // As for static vars
+  // ----------- //
+  // Static Vars //
+  // ----------- //
   // register a global var with class_name prefix in LLVM::Module
   for(const auto& kv : static_class_vars) {
     llvm::Type* global_type = kv.second;
@@ -61,6 +71,7 @@ antlrcpp::Any JackRealVisitor::visitClassDec(JackParser::ClassDecContext *ctx) {
     llvm::Constant* declared_global_var = this->Module->getOrInsertGlobal(global_name, global_type);
     assert(declared_global_var && "Unable to register static member as global variable");
   }
+  this->visitorHelper.current_class_name = class_name_text;
 
   // ------------------- //
   // Parse SubroutineDec //
@@ -86,12 +97,14 @@ antlrcpp::Any JackRealVisitor::visitSubroutineDec(JackParser::SubroutineDecConte
   antlr4::tree::TerminalNode* subroutine_decorator = ctx->SUBROUTINEDECORATOR();
   antlr4::Token* subroutine_decorator_tok = subroutine_decorator->getSymbol();
   std::string subroutine_decorator_text = subroutine_decorator_tok->getText();
+  this->visitorHelper.function_decorator = subroutine_decorator_text; 
   
   // --------------- //
   // Subroutine Name //
   // --------------- //
   JackParser::SubroutineNameContext* subroutine_name_ctx = ctx->subroutineName();
   std::string subroutine_name_text = this->visitSubroutineName(subroutine_name_ctx);
+  this->visitorHelper.current_function_name = subroutine_name_text;
 
   // ----------------- //
   // Parse return type //
@@ -111,15 +124,24 @@ antlrcpp::Any JackRealVisitor::visitSubroutineDec(JackParser::SubroutineDecConte
   JackParser::ParameterListContext* parameter_list_ctx = ctx->parameterList();
   std::pair<std::vector<llvm::Type*>, std::vector<std::string>> argument_list = this->visitParameterList(parameter_list_ctx);
 
+  std::vector<llvm::Type*> argument_type_list = argument_list.first;
+  std::vector<std::string> argument_name_list = argument_list.second;
+
+  // Insert 'this' to first argument
+  if(subroutine_decorator_text == "method") {
+    llvm::Type* this_type = this->Module->getTypeByName(this->visitorHelper.current_class_name);
+    argument_type_list.insert(argument_type_list.begin(), this_type);
+    argument_name_list.insert(argument_name_list.begin(), "this");
+  }
+
   // Create Function
-  llvm::FunctionType *FT = llvm::FunctionType::get(return_type, argument_list.first, false);
+  llvm::FunctionType *FT = llvm::FunctionType::get(return_type, argument_type_list, false);
   llvm::Function *F = llvm::Function::Create(FT, llvm::Function::ExternalLinkage, subroutine_name_text, this->Module.get());
-  this->currentFunction = F;
 
   // Set Argument names
   size_t Idx = 0;
   for (auto &Arg : F->args())
-    Arg.setName(argument_list.second[Idx++]);
+    Arg.setName(argument_name_list[Idx++]);
 
   // ------------------- //
   // Add Subroutine Body //
@@ -153,12 +175,7 @@ antlrcpp::Any JackRealVisitor::visitParameterList(JackParser::ParameterListConte
 
 
 antlrcpp::Any JackRealVisitor::visitSubroutineBody(JackParser::SubroutineBodyContext *ctx) {
-  llvm::Function* F = this->currentFunction;
-  // ----------------- //
-  // Contruct symtab_l //
-  // ----------------- //
-  
-  
+  llvm::Function* F = this->Module->getFunction(this->visitorHelper.current_function_name);
   // ---------------- //
   // Parse statements //
   // ---------------- //
@@ -166,7 +183,42 @@ antlrcpp::Any JackRealVisitor::visitSubroutineBody(JackParser::SubroutineBodyCon
   llvm::BasicBlock* BB = llvm::BasicBlock::Create(this->Context, "entry", F);
   this->Builder->SetInsertPoint(BB);
   
-  // 2. Call visitStatements()
+  // -------------------------- //
+  // Init and Contruct symtab_l //
+  // -------------------------- //
+  // 2. Constructor/Method/Function: Init and construct symtab_l
+  this->visitorHelper.symtab_l.clear();
+  std::vector<JackParser::VarDecContext*> var_dec_ctxs = ctx->varDec();
+  for(const auto& var_dec_ctx : var_dec_ctxs) {
+    std::vector<std::pair<std::string, llvm::Type*>> local_vars = this->visitVarDec(var_dec_ctx);
+    for(const auto& kv : local_vars) {
+      std::string name = kv.first;
+      llvm::Type* type = kv.second;
+      llvm::AllocaInst* var_addr = Builder->CreateAlloca(type, 0, name);
+      this->visitorHelper.symtab_l[name] = var_addr;
+    }
+  }
+
+  // -------------------------- //
+  // Init and Contruct symtab_a //
+  // -------------------------- //
+  // 2. Constructor only: allocate for self
+  this->visitorHelper.symtab_a.clear();
+  if(this->visitorHelper.function_decorator == "constructor") {
+    std::string class_name = this->visitorHelper.current_class_name;
+    llvm::Type* this_type = this->Module->getTypeByName(class_name);
+    llvm::AllocaInst* this_addr = Builder->CreateAlloca(this_type, 0, "this");
+    this->visitorHelper.symtab_a["this"] = this_addr;
+  }
+
+  // Setup symtab_a
+  // 'this' is added to front of arguments during call/constructor
+  for (auto& Arg : F->args()) {
+    std::string name = Arg.getName();
+    this->visitorHelper.symtab_a[name] = &Arg;
+  }
+
+  // 3. Call visitStatements()
   JackParser::StatementsContext* statements_ctx = ctx->statements();
   this->visitStatements(statements_ctx);
 

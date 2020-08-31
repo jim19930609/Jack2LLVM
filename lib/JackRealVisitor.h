@@ -73,6 +73,8 @@ public:
   virtual antlrcpp::Any visitVarName(JackParser::VarNameContext *ctx) override;
   virtual antlrcpp::Any visitVarDec(JackParser::VarDecContext *ctx) override;
 
+  std::shared_ptr<llvm::Module> getModule() { return Module; }
+
   JackRealVisitor() {
     // Suppose we only handle one single module
     // TODO: Add linking and relocation [future]
@@ -83,39 +85,41 @@ public:
 private:
   // LLVM Members
   llvm::LLVMContext Context;
-
   std::shared_ptr<llvm::Module> Module;
   std::shared_ptr<llvm::IRBuilder<>> Builder;
 
-  llvm::Function* currentFunction;
+  struct LoweringHints {
 
-  class Symtab {
-    public:
-      void reset() {};
-      void insert() {};
-      void get() {};
-    private:
-      //Storage Type
+    // ------- //
+    // Symtabs //
+    // ------- //
+    // global variables: symtab_g
+    // -contain 'static' variables
+    // -reset with Module creation
+    // Access directly from Module
 
+    // class variables : symtab_c
+    // -contain 'field' variables
+    // These var will be accessed via GEP to 'this'
+    // -reset with ClassDec
+    std::unordered_map<std::string, size_t> symtab_c;
+    
+    // local variables : symtab_l
+    // -contain 'local' variables
+    // -reset with SubroutineDec
+    std::unordered_map<std::string, llvm::AllocaInst*> symtab_l;
+    
+    // local variables : symtab_a
+    // -contain 'argument' variables
+    // -reset with SubroutineDec
+    std::unordered_map<std::string, llvm::Value*> symtab_a;
+
+    std::string current_class_name;
+    std::string current_function_name;
+    std::string function_decorator;
   };
+  
+  LoweringHints visitorHelper;
 
-  // ------- //
-  // Symtabs //
-  // ------- //
-  // global variables: symtab_g
-  // -contain 'static' variables
-  // -reset with Module creation
-  Symtab symtab_g;
-  
-  // class variables : symtab_c
-  // -contain 'field' variables
-  // -reset with ClassDec
-  Symtab symtab_c;
-  
-  // local variables : symtab_l
-  // -contain 'local' and 'argument' variables
-  // -reset with SubroutineDec
-  Symtab symtab_l;
-  
 };
 

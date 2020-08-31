@@ -2,6 +2,7 @@
 #include <fstream>
 #include <string>
 
+#include "llvm/Support/raw_ostream.h"
 #include "antlr4-runtime.h"
 #include "JackLexer.h" 
 #include "JackParser.h"
@@ -31,5 +32,12 @@ int main(int argc, const char *args[])
     JackRealVisitor visitor;
     visitor.visitClassDec(classCtx);
     
+    auto module = visitor.getModule();
+    std::string module_text;
+    
+    llvm::raw_string_ostream OS(module_text);
+    OS << *module.get();
+    
+    std::cout << module_text << std::endl;
     return 0; 
 }
