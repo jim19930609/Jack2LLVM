@@ -16,7 +16,7 @@
  */
 class  JackRealVisitor : public JackVisitor {
 public:
-
+  // Top Level or Class Level
   virtual antlrcpp::Any visitClassDec(JackParser::ClassDecContext *ctx) override;
   virtual antlrcpp::Any visitClassVarDec(JackParser::ClassVarDecContext *ctx) override;
   virtual antlrcpp::Any visitType(JackParser::TypeContext *ctx) override;
@@ -24,48 +24,20 @@ public:
   virtual antlrcpp::Any visitParameterList(JackParser::ParameterListContext *ctx) override;
   virtual antlrcpp::Any visitSubroutineBody(JackParser::SubroutineBodyContext *ctx) override;
 
-
+  // Statement Level
   virtual antlrcpp::Any visitStatements(JackParser::StatementsContext *ctx) override;
+  virtual antlrcpp::Any visitStatement(JackParser::StatementContext *ctx) override;
+  virtual antlrcpp::Any visitLetStatement(JackParser::LetStatementContext *ctx) override;
+  virtual antlrcpp::Any visitIfStatement(JackParser::IfStatementContext *ctx) override;
+  virtual antlrcpp::Any visitWhileStatement(JackParser::WhileStatementContext *ctx) override;
+  virtual antlrcpp::Any visitDoStatement(JackParser::DoStatementContext *ctx) override;
+  virtual antlrcpp::Any visitReturnStatement(JackParser::ReturnStatementContext *ctx) override;
 
-  virtual antlrcpp::Any visitStatement(JackParser::StatementContext *ctx) override {
-    return visitChildren(ctx);
-  }
-
-  virtual antlrcpp::Any visitLetStatement(JackParser::LetStatementContext *ctx) override {
-    return visitChildren(ctx);
-  }
-
-  virtual antlrcpp::Any visitIfStatement(JackParser::IfStatementContext *ctx) override {
-    return visitChildren(ctx);
-  }
-
-  virtual antlrcpp::Any visitWhileStatement(JackParser::WhileStatementContext *ctx) override {
-    return visitChildren(ctx);
-  }
-
-  virtual antlrcpp::Any visitDoStatement(JackParser::DoStatementContext *ctx) override {
-    return visitChildren(ctx);
-  }
-
-  virtual antlrcpp::Any visitReturnStatement(JackParser::ReturnStatementContext *ctx) override {
-    return visitChildren(ctx);
-  }
-
-  virtual antlrcpp::Any visitExpression(JackParser::ExpressionContext *ctx) override {
-    return visitChildren(ctx);
-  }
-
-  virtual antlrcpp::Any visitTerm(JackParser::TermContext *ctx) override {
-    return visitChildren(ctx);
-  }
-
-  virtual antlrcpp::Any visitSubroutineCall(JackParser::SubroutineCallContext *ctx) override {
-    return visitChildren(ctx);
-  }
-
-  virtual antlrcpp::Any visitExpressionList(JackParser::ExpressionListContext *ctx) override {
-    return visitChildren(ctx);
-  }
+  // Expression Level
+  virtual antlrcpp::Any visitExpression(JackParser::ExpressionContext *ctx);
+  virtual antlrcpp::Any visitTerm(JackParser::TermContext *ctx);
+  virtual antlrcpp::Any visitSubroutineCall(JackParser::SubroutineCallContext *ctx);
+  virtual antlrcpp::Any visitExpressionList(JackParser::ExpressionListContext *ctx);
   
   // Identifiers, Names...
   virtual antlrcpp::Any visitSubroutineName(JackParser::SubroutineNameContext *ctx) override;
@@ -81,6 +53,8 @@ public:
     Module = std::make_unique<llvm::Module>("Yet Another Module", Context);
     Builder = std::make_unique<llvm::IRBuilder<>>(Context);
   }
+
+  llvm::Value* variableLookup(std::string name);
 
 private:
   // LLVM Members

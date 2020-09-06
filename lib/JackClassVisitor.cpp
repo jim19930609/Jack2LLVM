@@ -104,6 +104,11 @@ antlrcpp::Any JackRealVisitor::visitSubroutineDec(JackParser::SubroutineDecConte
   // --------------- //
   JackParser::SubroutineNameContext* subroutine_name_ctx = ctx->subroutineName();
   std::string subroutine_name_text = this->visitSubroutineName(subroutine_name_ctx);
+  // Add prefix to function name
+  if(subroutine_decorator_text == "method" || subroutine_decorator_text == "constructor") {
+    std::string class_name = this->visitorHelper.current_class_name
+    subroutine_name_text = class_name + "." + subroutine_name_text;
+  }
   this->visitorHelper.current_function_name = subroutine_name_text;
 
   // ----------------- //
@@ -353,4 +358,36 @@ antlrcpp::Any JackRealVisitor::visitSubroutineName(JackParser::SubroutineNameCon
   std::string subroutine_name_str = subroutine_name_tok->getText();
   return subroutine_name_str;
   
+}
+
+
+llvm::Value* JackRealVisitor::variableLookup(std::string name) {
+  // lookup symtab_a
+  if(this->visitorHelper.symtab_a.count(name))
+    return this->visitorHelper.symtab_a[name];
+  
+  // lookup symtab_l
+  if(this->visitorHelper.symtab_l.count(name))
+    return this->visitorHelper.symtab_l[name];
+  
+  // lookup symtab_c
+  if(this->visitorHelper.symtab_c.count(name)) {
+    size_t index = this->visitorHelper.symtab_c[name];
+    // Get 'this' and use GEP
+    assert(this->visitorHelper.symtab_a.count("this") && "Member variable used outside of method/constructor subroutines");
+    llvm::Value* this_addr = this->visitorHelper.symtab_a["this"];
+    // Get value using GEP on this
+    std::vector<llvm::Value*> indices(2);
+    indices[0] = llvm::ConstantInt::get(llvm_context, llvm::APInt(32, 0, true)); // Get the pointer itself
+    indices[1] = llvm::ConstantInt::get(llvm_context, llvm::APInt(32, index, true));; // Get indexed member
+    
+    llvm::Value* member_addr = Builder->CreateGEP(this_addr, this_addr->getType(), indices, "memberaddr");
+
+    return member_addr;
+  }
+    
+  // lookup Module->global
+  assert(this->Module.getGlobalVariable(name) && "Undefined symbol used: " + name);
+  return this->Module.getGlobalVariable(name);
+
 }
