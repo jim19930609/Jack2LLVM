@@ -303,6 +303,7 @@ antlrcpp::Any JackRealVisitor::visitType(JackParser::TypeContext *ctx) {
   // Parse and return llvm::Type //
   // --------------------------- //
   antlr4::tree::TerminalNode* var_type = ctx->VARTYPES();
+  JackParser::ArrayTypeContext* array_type_ctx = ctx->arrayType();
   JackParser::ClassNameContext* class_type_ctx = ctx->className();
 
   llvm::Type* varType;
@@ -311,6 +312,46 @@ antlrcpp::Any JackRealVisitor::visitType(JackParser::TypeContext *ctx) {
     // -Boolean is Int1
     // -Int     is Int32
     // -Char    is Int8
+    antlr4::Token* var_type_tok = var_type -> getSymbol();
+    std::string var_type_str = var_type_tok->getText();
+    if(var_type_str == "int") {
+      varType = llvm::Type::getInt32Ty(this->Context);
+    } else if(var_type_str == "char") {
+      varType = llvm::Type::getInt8Ty(this->Context);
+    } else if(var_type_str == "boolean") {
+      varType = llvm::Type::getInt1Ty(this->Context);
+    } else {
+      assert(false && "Class variable basic types can only be 'int', 'char' or 'boolean'");
+    }
+
+  } else if(array_type_ctx) {
+    varType = this->visitArrayType(array_type_ctx);
+
+  } else if(class_type_ctx) {
+    // Get registered llvm::structType from llvm::Module
+    std::string identifier_text = this->visitClassName(class_type_ctx);
+    
+    varType = this->Module->getTypeByName(identifier_text);
+    assert(varType && "Class identifier used before declared");
+
+  } else {
+    assert(false && "Class variable type has to be either 'var_type' or 'class_type'");
+  }
+  
+  return varType;
+}
+
+antlrcpp::Any JackRealVisitor::visitArrayType(JackParser::ArrayTypeContext *ctx) {
+  antlr4::tree::TerminalNode* var_type = ctx->VARTYPES();
+  JackParser::ClassNameContext* class_type_ctx = ctx->className();
+  JackParser::LengthContext* length_ctx = ctx->length();
+  
+  antlr4::tree::TerminalNode* length_node = ctx->INTEGER();
+  antlr4::Token* length_tok = length_node -> getSymbol();
+  std::string length_string = length_tok->getText();
+  size_t length = std::stoi(length_string);
+
+  if(var_type) {
     antlr4::Token* var_type_tok = var_type -> getSymbol();
     std::string var_type_str = var_type_tok->getText();
     if(var_type_str == "int") {
@@ -334,7 +375,7 @@ antlrcpp::Any JackRealVisitor::visitType(JackParser::TypeContext *ctx) {
     assert(false && "Class variable type has to be either 'var_type' or 'class_type'");
   }
   
-  return varType;
+  return llvm::ArrayType::get(varType, length);
 }
 
 

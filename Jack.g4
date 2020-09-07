@@ -21,12 +21,8 @@ subroutineBody : '{' varDec* statements '}';
 
 varDec         : 'var' type varName (',' varName)* ';';
 
-arrayType      : VARTYPES '[' length ']'
-               | className '[' length ']'
-               ;
-
-length         : INTEGER
-               | ID
+arrayType      : VARTYPES '[' INTEGER ']'
+               | className '[' INTEGER ']'
                ;
 
 className      : ID;
