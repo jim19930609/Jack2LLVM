@@ -10,6 +10,7 @@ classVarDec    : CLASSDECORATOR type varName (',' varName)* ';';
 
 type           : VARTYPES
                | className
+               | arrayType
                ;
 
 subroutineDec  : SUBROUTINEDECORATOR ('void'|type) subroutineName '(' parameterList ')' subroutineBody;
@@ -19,6 +20,14 @@ parameterList  : ((type varName) (',' type varName)*)?;
 subroutineBody : '{' varDec* statements '}';
 
 varDec         : 'var' type varName (',' varName)* ';';
+
+arrayType      : VARTYPES '[' length ']'
+               | className '[' length ']'
+               ;
+
+length         : INTEGER
+               | ID
+               ;
 
 className      : ID;
 subroutineName : ID;
@@ -57,6 +66,7 @@ term            : INTEGER
                 | KEYWORD
                 | varName
                 | varName '[' expression ']'
+                | varName '.' varName
                 | subroutineCall
                 | '{' expression '}'
                 | UNARYOP term

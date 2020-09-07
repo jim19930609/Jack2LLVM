@@ -46,6 +46,7 @@ antlrcpp::Any JackRealVisitor::visitClassDec(JackParser::ClassDecContext *ctx) {
   // ---------- //
   // register a struct type in llvm::Module
   std::vector<llvm::Type*> struct_members;
+
   this->visitorHelper.symtab_c.clear();
   for(size_t i=0; i<field_class_vars.size(); i++) {
     std::string name = field_class_vars[i].first;
@@ -57,6 +58,9 @@ antlrcpp::Any JackRealVisitor::visitClassDec(JackParser::ClassDecContext *ctx) {
   }
   llvm::StructType* registered_class_type = llvm::StructType::create(this->Context, struct_members, class_name_text, true);
   assert(registered_class_type && "Unable to create class StructType during ClassDec");
+  
+  // Copy symtab_c
+  this->visitorHelper.class_member_name_to_index[registered_class_type] = this->visitorHelper.symtab_c[name];
 
   // ----------- //
   // Static Vars //

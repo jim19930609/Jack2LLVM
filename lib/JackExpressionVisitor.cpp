@@ -50,7 +50,7 @@ antlrcpp::Any JackRealVisitor::visitTerm(JackParser::TermContext *ctx) {
   antlr4::tree::TerminalNode* integer_constant_ctx = ctx->INTEGER();
   antlr4::tree::TerminalNode* string_constant_ctx = ctx->STRING();
   antlr4::tree::TerminalNode* keyword_constant_ctx = ctx->KEYWORD();
-  JackParser::VarNameContext* var_name_ctx = ctx->varName();
+  std::vector<JackParser::VarNameContext*> var_name_ctxs = ctx->varName();
   JackParser::ExpressionContext* expression_ctx = ctx->expression();
   JackParser::SubroutineCallContext* subroutine_ctx = ctx->subroutineCall();
   antlr4::tree::TerminalNode* unary_op_ctx = ctx->UNARYOP();
@@ -95,6 +95,26 @@ antlrcpp::Any JackRealVisitor::visitTerm(JackParser::TermContext *ctx) {
       assert(false && "Unrecognized keyword constant");
     }
   }
+
+  // varName.varName
+  if(var_name_ctxs.size() == 2) {
+    std::string class_var_name = this->visitVarName(var_name_ctxs[0]);
+    std::string member_var_name = this->visitVarName(var_name_ctxs[1]);
+
+    llvm::Value* class_var_addr = variableLookup(class_var_name);
+    llvm::Type* class_type = class_var_addr->getType();
+
+    size_t index = this->visitorHelper.class_member_name_to_index[class_type][member_var_name];
+    std::vector<llvm::Value*> indices(2);
+    indices[0] = llvm::ConstantInt::get(this->Context, llvm::APInt(32, 0, true)); // Get the pointer itself
+    indices[1] = llvm::ConstantInt::get(this->Context, llvm::APInt(32, index, true)); // Get indexed member
+
+    llvm::Value* member_addr = Builder->CreateGEP(class_var_addr, class_type, indices, "class_member_addr");
+    return Builder->CreateLoad(member_addr, "loadvalue");
+  }
+
+  assert(var_name_ctxs.size() == 1 && "Invalid number of VarNames found in Term");
+  JackParser::VarNameContext* var_name_ctx = var_name_ctxs[0];
   
   // varName[expression]
   if(var_name_ctx && expression_ctx) {
@@ -106,7 +126,7 @@ antlrcpp::Any JackRealVisitor::visitTerm(JackParser::TermContext *ctx) {
     indices[0] = llvm::ConstantInt::get(this->Context, llvm::APInt(32, 0, true)); // Get the pointer itself
     indices[1] = index; // Get indexed member
 
-    llvm::Value* member_addr = Builder->CreateGEP(var_addr, var_addr->getType(), indices, "memberaddr");
+    llvm::Value* member_addr = Builder->CreateGEP(var_addr, var_addr->getType(), indices, "array_member_addr");
     return Builder->CreateLoad(member_addr, "loadvalue");
   }
   

@@ -88,6 +88,9 @@ private:
     // -reset with SubroutineDec
     std::unordered_map<std::string, llvm::Value*> symtab_a;
 
+    // Map class member name to index
+    std::unordered_map<llvm::StructType*, std::unordered_map<std::string, size_t>> class_member_name_to_index;
+
     std::string current_class_name;
     std::string current_function_name;
     std::string function_decorator;
