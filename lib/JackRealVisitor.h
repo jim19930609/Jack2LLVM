@@ -34,12 +34,13 @@ public:
   virtual antlrcpp::Any visitReturnStatement(JackParser::ReturnStatementContext *ctx) override;
 
   // Expression Level
-  virtual antlrcpp::Any visitExpression(JackParser::ExpressionContext *ctx);
-  virtual antlrcpp::Any visitTerm(JackParser::TermContext *ctx);
-  virtual antlrcpp::Any visitSubroutineCall(JackParser::SubroutineCallContext *ctx);
-  virtual antlrcpp::Any visitExpressionList(JackParser::ExpressionListContext *ctx);
+  virtual antlrcpp::Any visitExpression(JackParser::ExpressionContext *ctx) override;
+  virtual antlrcpp::Any visitTerm(JackParser::TermContext *ctx) override;
+  virtual antlrcpp::Any visitSubroutineCall(JackParser::SubroutineCallContext *ctx) override;
+  virtual antlrcpp::Any visitExpressionList(JackParser::ExpressionListContext *ctx) override;
   
   // Identifiers, Names...
+  virtual antlrcpp::Any visitArrayType(JackParser::ArrayTypeContext *ctx) override;
   virtual antlrcpp::Any visitSubroutineName(JackParser::SubroutineNameContext *ctx) override;
   virtual antlrcpp::Any visitClassName(JackParser::ClassNameContext *ctx) override;
   virtual antlrcpp::Any visitVarName(JackParser::VarNameContext *ctx) override;
@@ -89,7 +90,7 @@ private:
     std::unordered_map<std::string, llvm::Value*> symtab_a;
 
     // Map class member name to index
-    std::unordered_map<llvm::StructType*, std::unordered_map<std::string, size_t>> class_member_name_to_index;
+    std::unordered_map<llvm::Type*, std::unordered_map<std::string, size_t>> class_member_name_to_index;
 
     std::string current_class_name;
     std::string current_function_name;

@@ -8,6 +8,8 @@ antlrcpp::Any JackRealVisitor::visitStatements(JackParser::StatementsContext *ct
   for(const auto& statement_ctx : statement_ctxs) {
     this->visitStatement(statement_ctx);
   }
+
+  return nullptr;
 }
 
 antlrcpp::Any JackRealVisitor::visitStatement(JackParser::StatementContext *ctx) {
@@ -36,6 +38,8 @@ antlrcpp::Any JackRealVisitor::visitStatement(JackParser::StatementContext *ctx)
   if(return_ctx) {
     this->visitReturnStatement(return_ctx);
   }
+
+  return nullptr;
 }
 
 
@@ -74,6 +78,8 @@ antlrcpp::Any JackRealVisitor::visitIfStatement(JackParser::IfStatementContext *
 
   // Nothing to insert for merge block.
   Builder->SetInsertPoint(MergeBB);
+
+  return nullptr;
 }
 
 
@@ -103,10 +109,13 @@ antlrcpp::Any JackRealVisitor::visitWhileStatement(JackParser::WhileStatementCon
 
   // Emit next block.
   Builder->SetInsertPoint(NextBB);
+
+  return nullptr;
 }
 
 antlrcpp::Any JackRealVisitor::visitDoStatement(JackParser::DoStatementContext *ctx) {
   this->visitSubroutineCall(ctx->subroutineCall());
+  return nullptr;
 }
 
 antlrcpp::Any JackRealVisitor::visitReturnStatement(JackParser::ReturnStatementContext *ctx) {
@@ -118,6 +127,8 @@ antlrcpp::Any JackRealVisitor::visitReturnStatement(JackParser::ReturnStatementC
   } else {
     Builder->CreateRetVoid();
   }
+
+  return nullptr;
 }
 
 
@@ -125,8 +136,8 @@ antlrcpp::Any JackRealVisitor::visitLetStatement(JackParser::LetStatementContext
   Function* F = this->Module->getFunction(this->visitorHelper.current_function_name);
   std::string var_name = this->visitVarName(ctx->varName());
   std::vector<JackParser::ExpressionContext*> exp_ctxs = ctx->expression();
-  assert(exp_ctxs.size() > 0 && "Let statement has to have at least right value")
-  assert(exp_ctxs.size() < 3 && "Let statement can only have at most 2 expressions")
+  assert(exp_ctxs.size() > 0 && "Let statement has to have at least right value");
+  assert(exp_ctxs.size() < 3 && "Let statement can only have at most 2 expressions");
 
   llvm::Value* r_val = this->visitExpression(exp_ctxs.back());
   llvm::Value* var_addr = this->variableLookup(var_name);
@@ -138,7 +149,7 @@ antlrcpp::Any JackRealVisitor::visitLetStatement(JackParser::LetStatementContext
     indices[0] = llvm::ConstantInt::get(this->Context, llvm::APInt(32, 0, true)); // Get the pointer itself
     indices[1] = index; // Get indexed member
     
-    llvm::Value* member_addr = Builder->CreateGEP(var_addr, var_addr->getType(), indices, "memberaddr");
+    llvm::Value* member_addr = Builder->CreateGEP(var_addr, indices, "memberaddr");
     Builder->CreateStore(r_val, member_addr);
     
   } else {
@@ -147,4 +158,6 @@ antlrcpp::Any JackRealVisitor::visitLetStatement(JackParser::LetStatementContext
     Builder->CreateStore(r_val, var_addr);
     
   }
+
+  return nullptr;
 }

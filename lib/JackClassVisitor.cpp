@@ -60,7 +60,7 @@ antlrcpp::Any JackRealVisitor::visitClassDec(JackParser::ClassDecContext *ctx) {
   assert(registered_class_type && "Unable to create class StructType during ClassDec");
   
   // Copy symtab_c
-  this->visitorHelper.class_member_name_to_index[registered_class_type] = this->visitorHelper.symtab_c[name];
+  this->visitorHelper.class_member_name_to_index[registered_class_type] = this->visitorHelper.symtab_c;
 
   // ----------- //
   // Static Vars //
@@ -110,7 +110,7 @@ antlrcpp::Any JackRealVisitor::visitSubroutineDec(JackParser::SubroutineDecConte
   std::string subroutine_name_text = this->visitSubroutineName(subroutine_name_ctx);
   // Add prefix to function name
   if(subroutine_decorator_text == "method" || subroutine_decorator_text == "constructor") {
-    std::string class_name = this->visitorHelper.current_class_name
+    std::string class_name = this->visitorHelper.current_class_name;
     subroutine_name_text = class_name + "." + subroutine_name_text;
   }
   this->visitorHelper.current_function_name = subroutine_name_text;
@@ -223,7 +223,7 @@ antlrcpp::Any JackRealVisitor::visitSubroutineBody(JackParser::SubroutineBodyCon
   // Setup symtab_a
   // 'this' is added to front of arguments during call/constructor
   for (auto& Arg : F->args()) {
-    std::string name = Arg.getName();
+    std::string name = Arg.getName().str();
     this->visitorHelper.symtab_a[name] = &Arg;
   }
 
@@ -344,13 +344,13 @@ antlrcpp::Any JackRealVisitor::visitType(JackParser::TypeContext *ctx) {
 antlrcpp::Any JackRealVisitor::visitArrayType(JackParser::ArrayTypeContext *ctx) {
   antlr4::tree::TerminalNode* var_type = ctx->VARTYPES();
   JackParser::ClassNameContext* class_type_ctx = ctx->className();
-  JackParser::LengthContext* length_ctx = ctx->length();
   
   antlr4::tree::TerminalNode* length_node = ctx->INTEGER();
   antlr4::Token* length_tok = length_node -> getSymbol();
   std::string length_string = length_tok->getText();
   size_t length = std::stoi(length_string);
 
+  llvm::Type* varType;
   if(var_type) {
     antlr4::Token* var_type_tok = var_type -> getSymbol();
     std::string var_type_str = var_type_tok->getText();
@@ -423,16 +423,17 @@ llvm::Value* JackRealVisitor::variableLookup(std::string name) {
     llvm::Value* this_addr = this->visitorHelper.symtab_a["this"];
     // Get value using GEP on this
     std::vector<llvm::Value*> indices(2);
-    indices[0] = llvm::ConstantInt::get(llvm_context, llvm::APInt(32, 0, true)); // Get the pointer itself
-    indices[1] = llvm::ConstantInt::get(llvm_context, llvm::APInt(32, index, true));; // Get indexed member
+    indices[0] = llvm::ConstantInt::get(this->Context, llvm::APInt(32, 0, true)); // Get the pointer itself
+    indices[1] = llvm::ConstantInt::get(this->Context, llvm::APInt(32, index, true));; // Get indexed member
     
-    llvm::Value* member_addr = Builder->CreateGEP(this_addr, this_addr->getType(), indices, "memberaddr");
+    llvm::Value* member_addr = Builder->CreateGEP(this_addr, indices, "memberaddr");
 
     return member_addr;
   }
     
   // lookup Module->global
-  assert(this->Module.getGlobalVariable(name) && "Undefined symbol used: " + name);
-  return this->Module.getGlobalVariable(name);
+  std::string error_message = "Undefined symbol used: " + name;
+  assert(this->Module->getGlobalVariable(name) && error_message.c_str());
+  return this->Module->getGlobalVariable(name);
 
 }

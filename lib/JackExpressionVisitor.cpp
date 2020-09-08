@@ -59,7 +59,7 @@ antlrcpp::Any JackRealVisitor::visitTerm(JackParser::TermContext *ctx) {
   // intergerConstant
   if(integer_constant_ctx) {
     antlr4::Token* integer_tok = integer_constant_ctx->getSymbol();
-    int integer = std::atoi(integer_tok->getText());
+    int integer = std::atoi(integer_tok->getText().c_str());
     llvm::Value* integer_val = llvm::ConstantInt::get(this->Context, llvm::APInt(32, integer, true));
 
     return integer_val;
@@ -109,7 +109,7 @@ antlrcpp::Any JackRealVisitor::visitTerm(JackParser::TermContext *ctx) {
     indices[0] = llvm::ConstantInt::get(this->Context, llvm::APInt(32, 0, true)); // Get the pointer itself
     indices[1] = llvm::ConstantInt::get(this->Context, llvm::APInt(32, index, true)); // Get indexed member
 
-    llvm::Value* member_addr = Builder->CreateGEP(class_var_addr, class_type, indices, "class_member_addr");
+    llvm::Value* member_addr = Builder->CreateGEP(class_var_addr, indices, "class_member_addr");
     return Builder->CreateLoad(member_addr, "loadvalue");
   }
 
@@ -126,7 +126,7 @@ antlrcpp::Any JackRealVisitor::visitTerm(JackParser::TermContext *ctx) {
     indices[0] = llvm::ConstantInt::get(this->Context, llvm::APInt(32, 0, true)); // Get the pointer itself
     indices[1] = index; // Get indexed member
 
-    llvm::Value* member_addr = Builder->CreateGEP(var_addr, var_addr->getType(), indices, "array_member_addr");
+    llvm::Value* member_addr = Builder->CreateGEP(var_addr, indices, "array_member_addr");
     return Builder->CreateLoad(member_addr, "loadvalue");
   }
   
@@ -138,7 +138,7 @@ antlrcpp::Any JackRealVisitor::visitTerm(JackParser::TermContext *ctx) {
   
   // (expression)
   if(expression_ctx) {
-    return this->visitExpression(espression_ctx);
+    return this->visitExpression(expression_ctx);
   }
 
   // subroutineCall
@@ -183,9 +183,9 @@ antlrcpp::Any JackRealVisitor::visitSubroutineCall(JackParser::SubroutineCallCon
       std::string var_name = this->visitVarName(var_name_ctx);
       function_name = var_name + "." + function_name;
     }
-    Function* F = this->Module->getFunction(function_name);
+    llvm::Function* F = this->Module->getFunction(function_name);
 
-    return Builder.CreateCall(F, Args, "call");
+    return Builder->CreateCall(F, Args, "call");
 }
 
 antlrcpp::Any JackRealVisitor::visitExpressionList(JackParser::ExpressionListContext *ctx) {
