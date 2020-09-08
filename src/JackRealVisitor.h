@@ -56,6 +56,7 @@ public:
   }
 
   llvm::Value* variableLookup(std::string name);
+  llvm::Type*  getVarType(antlr4::tree::TerminalNode* var_type, JackParser::ClassNameContext* class_type_ctx);
 
 private:
   // LLVM Members
