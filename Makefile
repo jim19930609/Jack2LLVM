@@ -1,45 +1,51 @@
-ANTLR=/usr/bin/java -jar antlr-4.7-complete.jar
-OUTPUT=output
-GENERATED=lib
+JAVA=/usr/bin/java
+BUILD=build
+SRC=src
 GRAMMAR=Jack
 MAIN=main
 
+LANGSRC=$(SRC)/language_src
+ANTLRLIB=$(SRC)/runtime_lib/antlr-4.7-complete.jar
+RUNTIMELIB=$(SRC)/runtime_lib/runtime-osx
+
 # here is where you plug in the runtime for your OS
-RUNTIME=runtime-osx
+ANTLR=$(JAVA) -jar $(ANTLRLIB)
 CC=g++
-CCARGS=-c -I $(RUNTIME)/antlr4-runtime/ -I $(GENERATED) -std=c++14	
+CCARGS=-c -I $(RUNTIMELIB)/antlr4-runtime/ -I $(LANGSRC) -I $(SRC) -std=c++14	
 LDARGS=-g
-LIBS=$(RUNTIME)/lib/libantlr4-runtime.a
+SRCS=$(RUNTIMELIB)/lib/libantlr4-runtime.a
 LLVMINCLUDE=`llvm-config --cflags` -std=c++14
 LLVMLINK=`llvm-config --ldflags --system-libs --libs core`
 
-runtime: libdirs $(MAIN).cpp
+
+all: language runtime
+
+runtime: build-dirs $(MAIN).cpp
 	# basic lexer & parser
-	$(CC) $(CCARGS) $(GENERATED)/$(GRAMMAR)Lexer.cpp -o $(OUTPUT)/$(GRAMMAR)Lexer.o 
-	$(CC) $(CCARGS) $(GENERATED)/$(GRAMMAR)Parser.cpp -o $(OUTPUT)/$(GRAMMAR)Parser.o 
-	$(CC) $(CCARGS) $(GENERATED)/$(GRAMMAR)Visitor.cpp -o $(OUTPUT)/$(GRAMMAR)Visitor.o
+	$(CC) $(CCARGS) $(LANGSRC)/$(GRAMMAR)Lexer.cpp -o $(BUILD)/$(GRAMMAR)Lexer.o 
+	$(CC) $(CCARGS) $(LANGSRC)/$(GRAMMAR)Parser.cpp -o $(BUILD)/$(GRAMMAR)Parser.o 
+	$(CC) $(CCARGS) $(LANGSRC)/$(GRAMMAR)Visitor.cpp -o $(BUILD)/$(GRAMMAR)Visitor.o
 
 	# visitor lib
-	$(CC) $(CCARGS) $(LLVMINCLUDE) $(GENERATED)/$(GRAMMAR)ExpressionVisitor.cpp -o $(OUTPUT)/$(GRAMMAR)ExpressionVisitor.o
-	$(CC) $(CCARGS) $(LLVMINCLUDE) $(GENERATED)/$(GRAMMAR)StatementVisitor.cpp -o $(OUTPUT)/$(GRAMMAR)StatementVisitor.o
-	$(CC) $(CCARGS) $(LLVMINCLUDE) $(GENERATED)/$(GRAMMAR)ClassVisitor.cpp -o $(OUTPUT)/$(GRAMMAR)ClassVisitor.o
+	$(CC) $(CCARGS) $(LLVMINCLUDE) $(SRC)/$(GRAMMAR)ExpressionVisitor.cpp -o $(BUILD)/$(GRAMMAR)ExpressionVisitor.o
+	$(CC) $(CCARGS) $(LLVMINCLUDE) $(SRC)/$(GRAMMAR)StatementVisitor.cpp -o $(BUILD)/$(GRAMMAR)StatementVisitor.o
+	$(CC) $(CCARGS) $(LLVMINCLUDE) $(SRC)/$(GRAMMAR)ClassVisitor.cpp -o $(BUILD)/$(GRAMMAR)ClassVisitor.o
 	
 	# main lib
-	$(CC) $(CCARGS) $(LLVMINCLUDE) $(MAIN).cpp  -o $(OUTPUT)/$(MAIN).o 
-	$(CC) $(LDARGS) $(LLVMLINK) $(OUTPUT)/$(MAIN).o $(OUTPUT)/$(GRAMMAR)ClassVisitor.o $(OUTPUT)/$(GRAMMAR)StatementVisitor.o $(OUTPUT)/$(GRAMMAR)ExpressionVisitor.o $(OUTPUT)/$(GRAMMAR)Lexer.o $(OUTPUT)/$(GRAMMAR)Visitor.o $(OUTPUT)/$(GRAMMAR)Parser.o $(LIBS) -o $(MAIN).out
+	$(CC) $(CCARGS) $(LLVMINCLUDE) $(MAIN).cpp  -o $(BUILD)/$(MAIN).o 
+	$(CC) $(LDARGS) $(LLVMLINK) $(BUILD)/$(MAIN).o $(BUILD)/$(GRAMMAR)ClassVisitor.o $(BUILD)/$(GRAMMAR)StatementVisitor.o $(BUILD)/$(GRAMMAR)ExpressionVisitor.o $(BUILD)/$(GRAMMAR)Lexer.o $(BUILD)/$(GRAMMAR)Visitor.o $(BUILD)/$(GRAMMAR)Parser.o $(SRCS) -o $(BUILD)/$(MAIN).out
 
-gen: dirs $(GRAMMAR).g4
-	$(ANTLR) -Dlanguage=Cpp -o $(GENERATED) $(GRAMMAR).g4 -no-listener -visitor
+language: lang-dirs $(GRAMMAR).g4
+	$(ANTLR) -Dlanguage=Cpp -o $(LANGSRC) $(GRAMMAR).g4 -no-listener -visitor
 
-libdirs:
-	mkdir -p $(OUTPUT) 
+build-dirs:
+	mkdir -p $(BUILD)
 
-dirs:
-	mkdir -p $(GENERATED) 
+lang-dirs:
+	mkdir -p $(LANGSRC)
 
 clean:
-	rm -rf $(MAIN).out
-	rm -rf $(OUTPUT)
+	rm -rf $(BUILD)
 
 s-clean: clean
-	rm -rf $(GENERATED)
+	rm -rf $(LANGSRC)
