@@ -39,7 +39,10 @@ statement       : letStatement
                 | whileStatement
                 | doStatement
                 | returnStatement
+                | castStatement
                 ;
+
+castStatement   : 'cast' varName type ';';
 
 letStatement    : 'let' varName ('[' expression ']')? '=' expression ';';
 

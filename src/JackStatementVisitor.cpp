@@ -161,3 +161,25 @@ antlrcpp::Any JackRealVisitor::visitLetStatement(JackParser::LetStatementContext
 
   return nullptr;
 }
+
+antlrcpp::Any JackRealVisitor::visitCastStatement(JackParser::CastStatementContext *ctx) {
+  std::string var_name = this->visitVarName(ctx->varName());
+  llvm::Value* var_addr = this->variableLookup(var_name);
+  
+  llvm::Type* srcType = var_addr->getType();
+  llvm::Type* dstType = this->visitType(ctx->type());
+
+  if(srcType->isIntegerTy() && dstType->isIntegerTy()) {
+    llvm::Value* var_val = this->Builder->CreateLoad(var_addr, "load_for_cast");
+    llvm::Value* casted_val = this->Builder->CreateIntCast(var_val, dstType, true, "basic_type_cast");
+    this->Builder->CreateStore(casted_val, var_addr);
+
+  } else if(srcType->isStructTy() && dstType->isStructTy()) {
+    this->Builder->CreatePointerCast(var_addr, dstType, "struct_type_cast");
+
+  } else {
+    assert(false && "Src and Dst of cast statement has to be both basic type or both ptr types, cannot do mix");
+  }
+  
+  return nullptr;
+}
