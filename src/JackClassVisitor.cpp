@@ -14,7 +14,8 @@ antlrcpp::Any JackRealVisitor::visitClassDec(JackParser::ClassDecContext *ctx) {
   // Then override by that from curent class
   //
   std::vector<llvm::Type*> struct_members;
-  std::unordered_map<std::string, std::string> var_func_name_mapping;
+  std::unordered_map<std::string, std::string> globalvar_name_mapping;
+  std::unordered_map<std::string, std::string> func_name_mapping;
   if(class_name_ctxs.size() == 2) {
     JackParser::ClassNameContext* parent_class_name_ctx = class_name_ctxs[1];
     std::string parent_class_name = this->visitClassName(parent_class_name_ctx);
@@ -39,7 +40,8 @@ antlrcpp::Any JackRealVisitor::visitClassDec(JackParser::ClassDecContext *ctx) {
     
     // Functions and Static members
     // Init with parent's mapping
-    var_func_name_mapping = this->visitorHelper.class_var_func_name_mapping[parent_type];
+    globalvar_name_mapping = this->visitorHelper.class_globalvar_name_mapping[parent_type];
+    func_name_mapping = this->visitorHelper.class_func_name_mapping[parent_type];
   }
 
   JackParser::ClassNameContext* class_name_ctx = class_name_ctxs[0];
@@ -92,6 +94,14 @@ antlrcpp::Any JackRealVisitor::visitClassDec(JackParser::ClassDecContext *ctx) {
     size_t index = struct_members.size() + i;
     this->visitorHelper.symtab_c[name] = index;
   }
+
+  // Insert virtual table to the end
+  // Virtual table will be a struct containing different FunctionType* 
+  
+  
+  
+  
+  
   llvm::StructType* registered_class_type = llvm::StructType::create(this->Context, struct_members, class_name_text, true);
   assert(registered_class_type && "Unable to create class StructType during ClassDec");
   
@@ -108,7 +118,7 @@ antlrcpp::Any JackRealVisitor::visitClassDec(JackParser::ClassDecContext *ctx) {
     std::string global_name = kv.first;
     
     // Child cannot override parent's static member
-    assert(var_func_name_mapping.count(global_name) == 0 && "Overriding parent's static member is illegal");
+    assert(globalvar_name_mapping.count(global_name) == 0 && "Overriding parent's static member is illegal");
     
     // Apply special prefix to static member var
     // Then make it a global var
@@ -117,19 +127,35 @@ antlrcpp::Any JackRealVisitor::visitClassDec(JackParser::ClassDecContext *ctx) {
     assert(declared_global_var && "Unable to register static member as global variable");
   
     // Update global var names mapping
-    var_func_name_mapping[global_name] = global_name_mangled;
+    globalvar_name_mapping[global_name] = global_name_mangled;
   }
   this->visitorHelper.current_class_name = class_name_text;
-  this->visitorHelper.class_var_func_name_mapping[registered_class_type] = var_func_name_mapping;
+  this->visitorHelper.class_globalvar_name_mapping[registered_class_type] = globalvar_name_mapping;
+  this->visitorHelper.class_func_name_mapping[registered_class_type] = func_name_mapping;
 
   // ------------------- //
   // Parse SubroutineDec //
   // ------------------- //
+  // Delay constructor registration to the end
+  // Because we need to update vtable at construction
+  JackParser::SubroutineDecContext* constructor_ctx;
   std::vector<JackParser::SubroutineDecContext*> subroutine_dec_ctxs = ctx->subroutineDec();
   for(JackParser::SubroutineDecContext* subroutine_dec_ctx : subroutine_dec_ctxs) {
+    // Delay constructor code gen
+    antlr4::tree::TerminalNode* decorator_ctx = subroutine_dec_ctx->SUBROUTINEDECORATOR();
+    antlr4::Token* decorator_tok = decorator_ctx->getSymbol();
+    std::string decorator = decorator_tok->getText();
+    if(decorator == "constructor") {
+      constructor_ctx = subroutine_dec_ctx;
+      continue;
+    }
+
     // visitSubroutineDec() will register functions to llvm::Module in place
     this->visitSubroutineDec(subroutine_dec_ctx);
   }
+
+  // Constructor codegen: update vtable
+  this->visitSubroutineDec(constructor_ctx);
 
   // Everything registered in llvm::Module
   // We dont need to return anything
@@ -161,7 +187,7 @@ antlrcpp::Any JackRealVisitor::visitSubroutineDec(JackParser::SubroutineDecConte
     subroutine_name_mangled = class_name + "." + subroutine_name;
   
     // Update subroutine names mapping
-    this->visitorHelper.class_var_func_name_mapping[this_type][subroutine_name] = subroutine_name_mangled;
+    this->visitorHelper.class_func_name_mapping[this_type][subroutine_name] = subroutine_name_mangled;
   }
   this->visitorHelper.current_function_name = subroutine_name_mangled;
 
@@ -466,7 +492,7 @@ llvm::Value* JackRealVisitor::variableLookup(std::string name) {
   // lookup Module->global
   // Get mangled global var name from class_var_func_name_mapping
   llvm::Type* this_type = this->Module->getTypeByName(this->visitorHelper.current_class_name);
-  std::string name_mangled = this->visitorHelper.class_var_func_name_mapping[this_type][name];
+  std::string name_mangled = this->visitorHelper.class_globalvar_name_mapping[this_type][name];
 
   std::string error_message = "Undefined symbol used: " + name_mangled;
   assert(this->Module->getGlobalVariable(name_mangled) && error_message.c_str());

@@ -185,7 +185,7 @@ antlrcpp::Any JackRealVisitor::visitSubroutineCall(JackParser::SubroutineCallCon
     }
     // Get mangled function name
     llvm::Type* this_type = this->Module->getTypeByName(this->visitorHelper.current_class_name);
-    std::string function_name_mangled = this->visitorHelper.class_var_func_name_mapping[this_type][function_name];
+    std::string function_name_mangled = this->visitorHelper.class_func_name_mapping[this_type][function_name];
     llvm::Function* F = this->Module->getFunction(function_name_mangled);
 
     return Builder->CreateCall(F, Args, "call");
