@@ -4,7 +4,7 @@ grammar Jack;
 /* Class Level Grammar */
 /* ------------------- */
 
-classDec       : 'class' className '{' classVarDec* subroutineDec* '}';
+classDec       : 'class' className (':' className)? '{' classVarDec* subroutineDec* '}';
 
 classVarDec    : CLASSDECORATOR type varName (',' varName)* ';';
 

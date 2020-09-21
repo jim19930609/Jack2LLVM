@@ -93,6 +93,9 @@ private:
 
     // Map class member name to index
     std::unordered_map<llvm::Type*, std::unordered_map<std::string, size_t>> class_member_name_to_index;
+    
+    // Raw name to actual registered name 
+    std::unordered_map<llvm::Type*, std::unordered_map<std::string, std::string>> class_var_func_name_mapping;
 
     std::string current_class_name;
     std::string current_function_name;
