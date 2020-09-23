@@ -16,6 +16,8 @@ antlrcpp::Any JackRealVisitor::visitClassDec(JackParser::ClassDecContext *ctx) {
   std::vector<llvm::Type*> struct_members;
   std::unordered_map<std::string, std::string> globalvar_name_mapping;
   std::unordered_map<std::string, std::string> func_name_mapping;
+  std::unordered_map<std::string, std::string> static_func_name_mapping;
+  std::vector<std::string> vtable_function_order;
   if(class_name_ctxs.size() == 2) {
     JackParser::ClassNameContext* parent_class_name_ctx = class_name_ctxs[1];
     std::string parent_class_name = this->visitClassName(parent_class_name_ctx);
@@ -42,6 +44,8 @@ antlrcpp::Any JackRealVisitor::visitClassDec(JackParser::ClassDecContext *ctx) {
     // Init with parent's mapping
     globalvar_name_mapping = this->visitorHelper.class_globalvar_name_mapping[parent_type];
     func_name_mapping = this->visitorHelper.class_func_name_mapping[parent_type];
+    static_func_name_mapping = this->visitorHelper.static_func_name_mapping[parent_type];
+    vtable_function_order = this->visitorHelper.class_vtable_function_order[parent_type];
   }
 
   JackParser::ClassNameContext* class_name_ctx = class_name_ctxs[0];
@@ -96,11 +100,11 @@ antlrcpp::Any JackRealVisitor::visitClassDec(JackParser::ClassDecContext *ctx) {
   }
 
   // Insert virtual table to the end
-  // Virtual table will be a struct containing different FunctionType* 
-  
-  
-  
-  
+  // Virtual table will be a struct containing pointer (i64 format) casted from Function*
+  size_t num_subroutines = ctx->subroutineDec().size();
+  llvm::ArrayType* vtable = llvm::ArrayType::get(llvm::Type::getInt64Ty(this->Context), num_subroutines);
+  this->visitorHelper.symtab_c["_vtable"] = struct_members.size();
+  struct_members.push_back(vtable);
   
   llvm::StructType* registered_class_type = llvm::StructType::create(this->Context, struct_members, class_name_text, true);
   assert(registered_class_type && "Unable to create class StructType during ClassDec");
@@ -132,6 +136,8 @@ antlrcpp::Any JackRealVisitor::visitClassDec(JackParser::ClassDecContext *ctx) {
   this->visitorHelper.current_class_name = class_name_text;
   this->visitorHelper.class_globalvar_name_mapping[registered_class_type] = globalvar_name_mapping;
   this->visitorHelper.class_func_name_mapping[registered_class_type] = func_name_mapping;
+  this->visitorHelper.static_func_name_mapping[registered_class_type] = static_func_name_mapping;
+  this->visitorHelper.class_vtable_function_order[registered_class_type] = vtable_function_order;
 
   // ------------------- //
   // Parse SubroutineDec //
@@ -181,13 +187,21 @@ antlrcpp::Any JackRealVisitor::visitSubroutineDec(JackParser::SubroutineDecConte
   JackParser::SubroutineNameContext* subroutine_name_ctx = ctx->subroutineName();
   std::string subroutine_name = this->visitSubroutineName(subroutine_name_ctx);
   std::string subroutine_name_mangled;
-  // Add prefix to function name
-  if(subroutine_decorator_text == "method" || subroutine_decorator_text == "constructor") {
-    std::string class_name = this->visitorHelper.current_class_name;
-    subroutine_name_mangled = class_name + "." + subroutine_name;
   
+  // Add prefix to function name
+  std::string class_name = this->visitorHelper.current_class_name;
+  subroutine_name_mangled = class_name + "." + subroutine_name;
+  if(subroutine_decorator_text == "method" || subroutine_decorator_text == "constructor") {
     // Update subroutine names mapping
     this->visitorHelper.class_func_name_mapping[this_type][subroutine_name] = subroutine_name_mangled;
+  
+  } else if(subroutine_decorator_text == "function") {
+    if(this->visitorHelper.static_func_name_mapping[this_type].count(subroutine_name))
+      assert(false && "Cannot override static function through inheritance");
+    this->visitorHelper.static_func_name_mapping[this_type][subroutine_name] = subroutine_name_mangled;
+
+  } else {
+    assert(false && "subroutine type has to be method, constructor or function");
   }
   this->visitorHelper.current_function_name = subroutine_name_mangled;
 
@@ -287,12 +301,42 @@ antlrcpp::Any JackRealVisitor::visitSubroutineBody(JackParser::SubroutineBodyCon
   // Init and Contruct symtab_a //
   // -------------------------- //
   // 2. Constructor only: allocate for self
+  //    Construct virtual table
   this->visitorHelper.symtab_a.clear();
   if(this->visitorHelper.function_decorator == "constructor") {
     std::string class_name = this->visitorHelper.current_class_name;
     llvm::Type* this_type = this->Module->getTypeByName(class_name);
     llvm::AllocaInst* this_addr = Builder->CreateAlloca(this_type, 0, "this");
     this->visitorHelper.symtab_a["this"] = this_addr;
+
+    // Now update vtable
+    size_t vtable_index = this->visitorHelper.symtab_c["_vtable"];
+    std::unordered_map<std::string, std::string>& func_name_mapping = this->visitorHelper.class_func_name_mapping[this_type];
+    std::vector<std::string>& vtable_functions = this->visitorHelper.class_vtable_function_order[this_type];
+    for(auto& kv : func_name_mapping) {
+      std::string name_demangled = kv.first;
+      // Overrided function, keep the same position as parent
+      if(std::find(vtable_functions.begin(), vtable_functions.end(), name_demangled) != vtable_functions.end()) continue;
+      vtable_functions.push_back(kv.first);
+    }
+
+    for(size_t function_index=0; function_index<vtable_functions.size(); function_index++) {
+      std::string function_name = vtable_functions[function_index];
+      std::string function_name_mangled = func_name_mapping[function_name];
+      llvm::Function* member_function = this->Module->getFunction(function_name_mangled);
+      
+      // Index has 3 levels:
+      // 1. Pointer itself
+      // 2. Vtable addr in this_type
+      // 3. Function index in Vtable
+      std::vector<llvm::Value*> indices(3);
+      indices[0] = llvm::ConstantInt::get(this->Context, llvm::APInt(32, 0, true)); // Get the pointer itself
+      indices[1] = llvm::ConstantInt::get(this->Context, llvm::APInt(32, vtable_index, true));
+      indices[2] = llvm::ConstantInt::get(this->Context, llvm::APInt(32, function_index, true));
+
+      llvm::Value* vtable_back_addr = Builder->CreateGEP(this_addr, indices, "function_addr_in_vtable");
+      Builder->CreateStore(member_function, vtable_back_addr);
+    }
   }
 
   // Setup symtab_a

@@ -176,19 +176,53 @@ antlrcpp::Any JackRealVisitor::visitSubroutineCall(JackParser::SubroutineCallCon
 
     // Parse FunctionName to get Function
     std::string function_name = this->visitSubroutineName(subroutine_name_ctx);
+    std::string function_name_mangled;
     if(class_name_ctx) {
+      // "function": static function call
       std::string class_name = this->visitClassName(class_name_ctx);
-      function_name = class_name + "." + function_name;
-    } else if(var_name_ctx) {
-      std::string var_name = this->visitVarName(var_name_ctx);
-      function_name = var_name + "." + function_name;
-    }
-    // Get mangled function name
-    llvm::Type* this_type = this->Module->getTypeByName(this->visitorHelper.current_class_name);
-    std::string function_name_mangled = this->visitorHelper.class_func_name_mapping[this_type][function_name];
-    llvm::Function* F = this->Module->getFunction(function_name_mangled);
+      // Get class type
+      llvm::Type* class_type = this->Module->getTypeByName(class_name);
+      function_name_mangled = this->visitorHelper.static_func_name_mapping[class_type][function_name];
+      
+      llvm::Function* F = this->Module->getFunction(function_name_mangled);
+      return Builder->CreateCall(F, Args, "call");
 
-    return Builder->CreateCall(F, Args, "call");
+    } else if(var_name_ctx) {
+      // "method": member function call
+      std::string var_name = this->visitVarName(var_name_ctx);
+
+      // Get class type
+      llvm::Value* var_value = variableLookup(var_name);
+      llvm::Type*  class_type = var_value->getType();
+      assert(class_type->isStructTy() && "Variable is not callable");
+
+      // Get Function from vtable
+      // First locate vtable
+      size_t vtable_index = class_type->getStructNumElements() - 1;
+      std::vector<std::string>& vtable_function_order = this->visitorHelper.class_vtable_function_order[class_type];
+      size_t function_index = std::find(vtable_function_order.begin(), vtable_function_order.begin(), function_name) - vtable_function_order.end();
+
+      // Index has 3 levels:
+      // 1. Pointer itself
+      // 2. Vtable addr in this_type
+      // 3. Function index in Vtable
+      std::vector<llvm::Value*> indices(3);
+      indices[0] = llvm::ConstantInt::get(this->Context, llvm::APInt(32, 0, true)); // Get the pointer itself
+      indices[1] = llvm::ConstantInt::get(this->Context, llvm::APInt(32, vtable_index, true));
+      indices[2] = llvm::ConstantInt::get(this->Context, llvm::APInt(32, function_index, true));
+      // This is the function pointer
+      llvm::Value* member_addr = Builder->CreateGEP(var_value, indices, "function_addr_in_vtable");
+      llvm::Value* member_function = Builder->CreateLoad(member_addr, "Load function ptr");
+
+      // Virtual functions should have the same function type
+      // We just grab it here
+      function_name_mangled = this->visitorHelper.class_func_name_mapping[class_type][function_name];
+      llvm::FunctionType* function_type = this->Module->getFunction(function_name_mangled)->getFunctionType();
+
+      return Builder->CreateCall(function_type, member_function, Args, "call");
+    }
+    
+    return nullptr;    
 }
 
 antlrcpp::Any JackRealVisitor::visitExpressionList(JackParser::ExpressionListContext *ctx) {

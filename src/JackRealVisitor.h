@@ -96,7 +96,11 @@ private:
     
     // Raw name to actual registered name 
     std::unordered_map<llvm::Type*, std::unordered_map<std::string, std::string>> class_func_name_mapping;
+    std::unordered_map<llvm::Type*, std::unordered_map<std::string, std::string>> static_func_name_mapping;
     std::unordered_map<llvm::Type*, std::unordered_map<std::string, std::string>> class_globalvar_name_mapping;
+    
+    // demangled name
+    std::unordered_map<llvm::Type*, std::vector<std::string>> class_vtable_function_order;
 
     std::string current_class_name;
     std::string current_function_name;
