@@ -2,7 +2,6 @@
 #include <fstream>
 #include <string>
 
-#include <glog/logging.h>
 #include "llvm/Support/raw_ostream.h"
 #include "antlr4-runtime.h"
 #include "JackLexer.h" 
@@ -40,14 +39,10 @@ int main(int argc, const char *args[])
     visitor.visitClassDec(classCtx);
 
     VLOG(6) << "Parsed Jack into LLVMIR";
-   
+  
+    /* ---- Dumps ---- */ 
     auto& module = visitor.getModule();
-    std::string module_text;
-    
-    VLOG(6) << "Printing out llvm::Module";
-    llvm::raw_string_ostream OS(module_text);
-    OS << module;
-    VLOG(1) << module_text;
-    
+    module.print(llvm::outs(), nullptr);
+
     return 0; 
 }

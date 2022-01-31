@@ -3,12 +3,20 @@
 
 #pragma once
 
-
+#include <glog/logging.h>
+#include "llvm/Support/raw_ostream.h"
 #include "antlr4-runtime.h"
 #include "JackVisitor.h"
 #include "llvm/IR/Module.h"
 #include "llvm/IR/IRBuilder.h"
 #include "llvm/IR/LLVMContext.h"
+
+inline void print_llvm_type(llvm::Type* type) {
+  std::string print_str;
+  llvm::raw_string_ostream rso(print_str);
+  type->print(rso);
+  VLOG(6) << rso.str();
+}
 
 /**
  * This class provides an empty implementation of JackVisitor, which can be

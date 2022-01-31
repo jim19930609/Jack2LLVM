@@ -5,9 +5,15 @@
 #include "llvm/IR/Type.h"
 
 antlrcpp::Any JackRealVisitor::visitClassDec(JackParser::ClassDecContext *ctx) {
+  
   // Class Name
   std::vector<JackParser::ClassNameContext*> class_name_ctxs = ctx->className();
   assert(class_name_ctxs.size() <= 2 && "Too many class names detected");
+  
+  JackParser::ClassNameContext* class_name_ctx = class_name_ctxs[0];
+  std::string class_name_text = this->visitClassName(class_name_ctx).as<std::string>();
+  
+  VLOG(6) << "------ Visiting ClassDec : " << class_name_text << "  ------";
 
   // Handle Inheritance if there is any
   // Parent's members/functions are registered first
@@ -19,6 +25,8 @@ antlrcpp::Any JackRealVisitor::visitClassDec(JackParser::ClassDecContext *ctx) {
   std::unordered_map<std::string, std::string> static_func_name_mapping;
   std::vector<std::string> vtable_function_order;
   if(class_name_ctxs.size() == 2) {
+    VLOG(6) << "Handling Inheritance";
+
     JackParser::ClassNameContext* parent_class_name_ctx = class_name_ctxs[1];
     std::string parent_class_name = this->visitClassName(parent_class_name_ctx).as<std::string>();
     
@@ -39,6 +47,8 @@ antlrcpp::Any JackRealVisitor::visitClassDec(JackParser::ClassDecContext *ctx) {
       struct_members.push_back(member_type);
       this->visitorHelper.symtab_c[member_name] = i;
     }
+
+    VLOG(6) << "Handled Parent Members";
     
     // Functions and Static members
     // Init with parent's mapping
@@ -46,10 +56,12 @@ antlrcpp::Any JackRealVisitor::visitClassDec(JackParser::ClassDecContext *ctx) {
     func_name_mapping = this->visitorHelper.class_func_name_mapping[parent_type];
     static_func_name_mapping = this->visitorHelper.static_func_name_mapping[parent_type];
     vtable_function_order = this->visitorHelper.class_vtable_function_order[parent_type];
+    
+    VLOG(6) << "Handled Parent Methods";
   }
 
-  JackParser::ClassNameContext* class_name_ctx = class_name_ctxs[0];
-  std::string class_name_text = this->visitClassName(class_name_ctx).as<std::string>();
+
+  VLOG(6) << "Class Name: " << class_name_ctx;
 
   // ClassDec Members
   const std::vector<JackParser::ClassVarDecContext *>& class_var_decs = ctx->classVarDec();
@@ -80,6 +92,7 @@ antlrcpp::Any JackRealVisitor::visitClassDec(JackParser::ClassDecContext *ctx) {
         assert(false && "Decorator types can only be either 'static' or 'field'");
 
       }
+      VLOG(6) << "Parsed Class Var: " << decorator << " " << class_vars[class_var_index].first;
     }
   }
   
@@ -99,6 +112,8 @@ antlrcpp::Any JackRealVisitor::visitClassDec(JackParser::ClassDecContext *ctx) {
     this->visitorHelper.symtab_c[name] = index;
   }
 
+  VLOG(6) << "Registered Class-level Field Vars";
+
   // Insert virtual table to the end
   // Virtual table will be a struct containing pointer (i64 format) casted from Function*
   size_t num_subroutines = ctx->subroutineDec().size();
@@ -109,6 +124,8 @@ antlrcpp::Any JackRealVisitor::visitClassDec(JackParser::ClassDecContext *ctx) {
   llvm::StructType* registered_class_type = llvm::StructType::create(getContext(), struct_members, class_name_text, true);
   assert(registered_class_type && "Unable to create class StructType during ClassDec");
   
+  VLOG(6) << "Handled Virtual Table";
+
   // Copy symtab_c
   this->visitorHelper.class_member_name_to_index[registered_class_type] = this->visitorHelper.symtab_c;
 
@@ -133,6 +150,9 @@ antlrcpp::Any JackRealVisitor::visitClassDec(JackParser::ClassDecContext *ctx) {
     // Update global var names mapping
     globalvar_name_mapping[global_name] = global_name_mangled;
   }
+
+  VLOG(6) << "Registered Static Vars";
+
   this->visitorHelper.current_class_name = class_name_text;
   this->visitorHelper.class_globalvar_name_mapping[registered_class_type] = globalvar_name_mapping;
   this->visitorHelper.class_func_name_mapping[registered_class_type] = func_name_mapping;
@@ -144,7 +164,7 @@ antlrcpp::Any JackRealVisitor::visitClassDec(JackParser::ClassDecContext *ctx) {
   // ------------------- //
   // Delay constructor registration to the end
   // Because we need to update vtable at construction
-  JackParser::SubroutineDecContext* constructor_ctx;
+  JackParser::SubroutineDecContext* constructor_ctx = nullptr;
   std::vector<JackParser::SubroutineDecContext*> subroutine_dec_ctxs = ctx->subroutineDec();
   for(JackParser::SubroutineDecContext* subroutine_dec_ctx : subroutine_dec_ctxs) {
     // Delay constructor code gen
@@ -158,10 +178,16 @@ antlrcpp::Any JackRealVisitor::visitClassDec(JackParser::ClassDecContext *ctx) {
 
     // visitSubroutineDec() will register functions to llvm::Module in place
     this->visitSubroutineDec(subroutine_dec_ctx);
+
+    VLOG(6) << "Parsed SubroutineDec with decorator: " << decorator;
   }
 
   // Constructor codegen: update vtable
-  this->visitSubroutineDec(constructor_ctx);
+  if(constructor_ctx) {
+      this->visitSubroutineDec(constructor_ctx);
+  }
+
+  VLOG(6) << "------ Finished Parsing ClassDec ------";
 
   // Everything registered in llvm::Module
   // We dont need to return anything
@@ -186,11 +212,12 @@ antlrcpp::Any JackRealVisitor::visitSubroutineDec(JackParser::SubroutineDecConte
   // --------------- //
   JackParser::SubroutineNameContext* subroutine_name_ctx = ctx->subroutineName();
   std::string subroutine_name = this->visitSubroutineName(subroutine_name_ctx).as<std::string>();
-  std::string subroutine_name_mangled;
+  
+  VLOG(6) << "------ Visiting SubroutineDec : " << subroutine_decorator_text << " " << subroutine_name << " ------";
   
   // Add prefix to function name
   std::string class_name = this->visitorHelper.current_class_name;
-  subroutine_name_mangled = class_name + "." + subroutine_name;
+  std::string subroutine_name_mangled = class_name + "." + subroutine_name;
   if(subroutine_decorator_text == "method" || subroutine_decorator_text == "constructor") {
     // Update subroutine names mapping
     this->visitorHelper.class_func_name_mapping[this_type][subroutine_name] = subroutine_name_mangled;
@@ -215,6 +242,9 @@ antlrcpp::Any JackRealVisitor::visitSubroutineDec(JackParser::SubroutineDecConte
     return_type = this->visitType(return_type_ctx).as<llvm::Type*>();
   }
   
+  VLOG(6) << "Parsed Return Type";
+  print_llvm_type(return_type);
+
   // ------------------ //
   // Construct Function //
   // ------------------ //
@@ -235,11 +265,16 @@ antlrcpp::Any JackRealVisitor::visitSubroutineDec(JackParser::SubroutineDecConte
   // Create Function
   llvm::FunctionType *FT = llvm::FunctionType::get(return_type, argument_type_list, false);
   llvm::Function *F = llvm::Function::Create(FT, llvm::Function::ExternalLinkage, subroutine_name_mangled, getModule());
-
+  
   // Set Argument names
   size_t Idx = 0;
-  for (auto &Arg : F->args())
+  for (auto &Arg : F->args()) {
     Arg.setName(argument_name_list[Idx++]);
+  }
+  
+  VLOG(6) << "Created Function Type";
+  print_llvm_type(FT);
+  VLOG(6) << "";
 
   // ------------------- //
   // Add Subroutine Body //
@@ -249,6 +284,8 @@ antlrcpp::Any JackRealVisitor::visitSubroutineDec(JackParser::SubroutineDecConte
   JackParser::SubroutineBodyContext* subroutine_body_ctx= ctx->subroutineBody();
   this->visitSubroutineBody(subroutine_body_ctx);
   
+  VLOG(6) << "------ Finished Parsing SubroutineDec ------";
+
   return nullptr;
 }
 
@@ -266,6 +303,10 @@ antlrcpp::Any JackRealVisitor::visitParameterList(JackParser::ParameterListConte
 
     std::string var_name_str = this->visitVarName(var_name_ctxs[i]).as<std::string>();
     names.emplace_back(var_name_str);
+  
+    VLOG(6) << "Parsed Argument : " << var_name_str;
+    print_llvm_type(argType);
+    VLOG(6) << "";
   }
 
   return std::make_pair(types, names);
@@ -278,6 +319,7 @@ antlrcpp::Any JackRealVisitor::visitSubroutineBody(JackParser::SubroutineBodyCon
   // Parse statements //
   // ---------------- //
   // 1. Add entry BB
+  VLOG(6) << "---- Parsing Subroutine Body ----";
   llvm::BasicBlock* BB = llvm::BasicBlock::Create(getContext(), "entry", F);
 
   auto builder = getBuilder();
@@ -296,8 +338,14 @@ antlrcpp::Any JackRealVisitor::visitSubroutineBody(JackParser::SubroutineBodyCon
       llvm::Type* type = kv.second;
       llvm::AllocaInst* var_addr = builder.CreateAlloca(type, 0, name);
       this->visitorHelper.symtab_l[name] = var_addr;
+
+      VLOG(6) << "Local Symbol : " << name;
+      print_llvm_type(type);
+      VLOG(6) << "";
     }
   }
+  
+  VLOG(6) << "Finished Updating Symbol Table Local";
 
   // -------------------------- //
   // Init and Contruct symtab_a //
@@ -310,6 +358,8 @@ antlrcpp::Any JackRealVisitor::visitSubroutineBody(JackParser::SubroutineBodyCon
     llvm::Type* this_type = getModule().getTypeByName(class_name);
     llvm::AllocaInst* this_addr = builder.CreateAlloca(this_type, 0, "this");
     this->visitorHelper.symtab_a["this"] = this_addr;
+    
+    VLOG(6) << "Handled Constructor \"this\" Argument";
 
     // Now update vtable
     size_t vtable_index = this->visitorHelper.symtab_c["_vtable"];
@@ -339,6 +389,8 @@ antlrcpp::Any JackRealVisitor::visitSubroutineBody(JackParser::SubroutineBodyCon
       llvm::Value* vtable_back_addr = builder.CreateGEP(this_addr, indices, "function_addr_in_vtable");
       builder.CreateStore(member_function, vtable_back_addr);
     }
+
+    VLOG(6) << "Finished Constructing Vtable as Class Member";
   }
 
   // Setup symtab_a
@@ -346,11 +398,19 @@ antlrcpp::Any JackRealVisitor::visitSubroutineBody(JackParser::SubroutineBodyCon
   for (auto& Arg : F->args()) {
     std::string name = Arg.getName().str();
     this->visitorHelper.symtab_a[name] = &Arg;
+      
+    VLOG(6) << "Arg Symbol : " << name;
+    print_llvm_type(Arg.getType());
+    VLOG(6) << "";
   }
+
+  VLOG(6) << "Finished Updating Symbol Table Argument";
 
   // 3. Call visitStatements()
   JackParser::StatementsContext* statements_ctx = ctx->statements();
   this->visitStatements(statements_ctx);
+
+  VLOG(6) << "---- Finished Parsing SubroutineBody ----";
 
   return nullptr;
 }

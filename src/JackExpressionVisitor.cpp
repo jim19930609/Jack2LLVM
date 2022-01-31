@@ -5,6 +5,8 @@ antlrcpp::Any JackRealVisitor::visitExpression(JackParser::ExpressionContext *ct
   std::vector<antlr4::tree::TerminalNode*> op_list = ctx->OP();
   std::vector<JackParser::TermContext*> term_list = ctx->term();
 
+  VLOG(6) << "---- Parsing Expression ----";
+
   assert(term_list.size() > 0 && "Expression contains zero terms");
   assert(term_list.size() == op_list.size() + 1 && "Expression number of terms mismatch number of ops");
 
@@ -16,7 +18,6 @@ antlrcpp::Any JackRealVisitor::visitExpression(JackParser::ExpressionContext *ct
     // Check LHS & RHS having the same datatype
     llvm::Type* lhs_type = LHS->getType();
     llvm::Type* rhs_type = RHS->getType();
-    assert(lhs_type == rhs_type && "Operation operands have different data types");
 
     antlr4::Token* op_tok = op_list[i]->getSymbol();
     std::string op_text = op_tok->getText();
@@ -42,7 +43,12 @@ antlrcpp::Any JackRealVisitor::visitExpression(JackParser::ExpressionContext *ct
       assert(false && "Unrecognized operation type");
     }
   }
+  
+  VLOG(6) << "Expression Parsing Result";
+  print_llvm_type(LHS->getType());
 
+  VLOG(6) << "---- Finished Parsing Expression ----";
+  
   return LHS;
 }
 
@@ -64,6 +70,8 @@ antlrcpp::Any JackRealVisitor::visitTerm(JackParser::TermContext *ctx) {
     antlr4::Token* integer_tok = integer_constant_ctx->getSymbol();
     int integer = std::atoi(integer_tok->getText().c_str());
     llvm::Value* integer_val = llvm::ConstantInt::get(getContext(), llvm::APInt(32, integer, true));
+    
+    VLOG(6) << "Parsing Integer Term : " << integer;
 
     return integer_val;
   }
@@ -72,6 +80,8 @@ antlrcpp::Any JackRealVisitor::visitTerm(JackParser::TermContext *ctx) {
     antlr4::Token* string_tok = string_constant_ctx->getSymbol();
     std::string string = string_tok->getText();
     llvm::Value* string_val = builder.CreateGlobalString(string);
+    
+    VLOG(6) << "Parsing String Term : " << string;
   
     return string_val;
   }
@@ -80,6 +90,8 @@ antlrcpp::Any JackRealVisitor::visitTerm(JackParser::TermContext *ctx) {
   if(keyword_constant_ctx) {
     antlr4::Token* keyword_tok = keyword_constant_ctx->getSymbol();
     std::string keyword = keyword_tok->getText();
+    
+    VLOG(6) << "Parsing Keyword Term : " << keyword;
 
     if(keyword == "true"){
       return llvm::APInt(1, 1, true);
@@ -113,6 +125,9 @@ antlrcpp::Any JackRealVisitor::visitTerm(JackParser::TermContext *ctx) {
     indices[1] = llvm::ConstantInt::get(getContext(), llvm::APInt(32, index, true)); // Get indexed member
 
     llvm::Value* member_addr = builder.CreateGEP(class_var_addr, indices, "class_member_addr");
+    
+    VLOG(6) << "Parsing VarName.VarName Term : " << class_var_name << "." << member_var_name;
+    
     return builder.CreateLoad(member_addr, "loadvalue");
   }
 
@@ -130,22 +145,28 @@ antlrcpp::Any JackRealVisitor::visitTerm(JackParser::TermContext *ctx) {
     indices[1] = index; // Get indexed member
 
     llvm::Value* member_addr = builder.CreateGEP(var_addr, indices, "array_member_addr");
+    
+    VLOG(6) << "Parsing VarName[expression] Term : " << var_name;
+    
     return builder.CreateLoad(member_addr, "loadvalue");
   }
   
   // varName
   if(var_name_ctx) {
     std::string var_name = this->visitVarName(var_name_ctx).as<std::string>();
+    VLOG(6) << "Parsing VarName Term : " << var_name;
     return variableLookup(var_name);
   }
   
   // (expression)
   if(expression_ctx) {
+    VLOG(6) << "Parsing Expression Term";
     return this->visitExpression(expression_ctx);
   }
 
   // subroutineCall
   if(subroutine_ctx) {
+    VLOG(6) << "Parsing SubroutineCall Term";
     return this->visitSubroutineCall(subroutine_ctx);
   }
   
@@ -154,6 +175,9 @@ antlrcpp::Any JackRealVisitor::visitTerm(JackParser::TermContext *ctx) {
     antlr4::Token* unary_op_tok = unary_op_ctx->getSymbol();
     std::string unary_op_text = unary_op_tok->getText();
     llvm::Value* term_val = this->visitTerm(term_ctx).as<llvm::Value*>();
+
+    VLOG(6) << "Parsed unaryOp Term: " << unary_op_text;
+
     if(unary_op_text == "-") {
       return builder.CreateNeg(term_val, "neg");
     } else if(unary_op_text == "~") {
@@ -173,7 +197,7 @@ antlrcpp::Any JackRealVisitor::visitSubroutineCall(JackParser::SubroutineCallCon
     JackParser::VarNameContext* var_name_ctx = ctx->varName();
 
     assert(subroutine_name_ctx && "No subroutine name specified");
-
+    
     // Parse ExpressionList to create Args
     std::vector<llvm::Value*> Args = this->visitExpressionList(expressionlist_ctx).as<std::vector<llvm::Value*>>();
 
@@ -190,6 +214,10 @@ antlrcpp::Any JackRealVisitor::visitSubroutineCall(JackParser::SubroutineCallCon
       function_name_mangled = this->visitorHelper.static_func_name_mapping[class_type][function_name];
       
       llvm::Function* F = module.getFunction(function_name_mangled);
+
+      VLOG(6) << "Detected Subroutine Call";
+      print_llvm_type(F->getType());
+
       return builder.CreateCall(F, Args, "call");
 
     } else if(var_name_ctx) {
@@ -224,6 +252,9 @@ antlrcpp::Any JackRealVisitor::visitSubroutineCall(JackParser::SubroutineCallCon
       function_name_mangled = this->visitorHelper.class_func_name_mapping[class_type][function_name];
       llvm::Module& module = getModule();
       llvm::FunctionType* function_type = module.getFunction(function_name_mangled)->getFunctionType();
+      
+      VLOG(6) << "Detected Subroutine Call";
+      print_llvm_type(function_type);
 
       return builder.CreateCall(function_type, member_function, Args, "call");
     }

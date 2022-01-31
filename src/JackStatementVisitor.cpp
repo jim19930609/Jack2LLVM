@@ -49,9 +49,22 @@ antlrcpp::Any JackRealVisitor::visitIfStatement(JackParser::IfStatementContext *
   Value* ifcond_exp = this->visitExpression(exp_ctx).as<Value*>();
   assert(ifcond_exp && "Unable to parser if condition expression");
 
+  VLOG(6) << "---- Parsing If Statement ----"; 
+
   // Convert condition to a bool by comparing non-equal to 0.0.
   auto builder = getBuilder();
-  ifcond_exp = builder.CreateFCmpONE(ifcond_exp, ConstantFP::get(getContext(), APFloat(0.0)), "ifcond");
+  Type* ifcond_exp_type = ifcond_exp->getType();
+  llvm::IntegerType* int_type;
+  if(ifcond_exp_type->isIntegerTy(1)) {
+    int_type = llvm::IntegerType::get(getContext(), 1);
+  } else if(ifcond_exp_type->isIntegerTy(8)) {
+    int_type = llvm::IntegerType::get(getContext(), 8);
+  } else if(ifcond_exp_type->isIntegerTy(32)) {
+    int_type = llvm::IntegerType::get(getContext(), 32);
+  } else {
+    assert(false && "ifcond_exp_type should be within 1, 8 or 32.");
+  }
+  ifcond_exp = builder.CreateICmpNE(ifcond_exp, llvm::ConstantInt::get(int_type, 0, true), "ifcond");
 
   // Create blocks for the then and else cases.  Insert the 'then' block at the
   // end of the function.
@@ -80,6 +93,7 @@ antlrcpp::Any JackRealVisitor::visitIfStatement(JackParser::IfStatementContext *
   // Nothing to insert for merge block.
   builder.SetInsertPoint(MergeBB);
 
+  VLOG(6) << "---- Finished Parsing If Statement ----"; 
   return nullptr;
 }
 
@@ -89,15 +103,29 @@ antlrcpp::Any JackRealVisitor::visitWhileStatement(JackParser::WhileStatementCon
   BasicBlock *CondBB = BasicBlock::Create(getContext(), "whilecond", F);
   BasicBlock *WhileBB = BasicBlock::Create(getContext(), "while",    F);
   BasicBlock *NextBB = BasicBlock::Create(getContext(), "next", F);
+  
+  VLOG(6) << "---- Parsing While Statement ----"; 
  
   auto builder = getBuilder();
   builder.SetInsertPoint(CondBB);
   JackParser::ExpressionContext* exp_ctx = ctx->expression();
   Value* whilecond_exp = this->visitExpression(exp_ctx).as<Value*>();
   assert(whilecond_exp && "Unable to parser while condition expression");
+  // We only support 1, 8, 32 bits for now.
+  Type* cond_exp_type = whilecond_exp->getType();
+  llvm::IntegerType* int_type;
+  if(cond_exp_type->isIntegerTy(1)) {
+    int_type = llvm::IntegerType::get(getContext(), 1);
+  } else if(cond_exp_type->isIntegerTy(8)) {
+    int_type = llvm::IntegerType::get(getContext(), 8);
+  } else if(cond_exp_type->isIntegerTy(32)) {
+    int_type = llvm::IntegerType::get(getContext(), 32);
+  } else {
+    assert(false && "cond_exp_type should be within 1, 8 or 32.");
+  }
 
-  // Convert condition to a bool by comparing non-equal to 0.0.
-  whilecond_exp = builder.CreateFCmpONE(whilecond_exp, ConstantFP::get(getContext(), APFloat(0.0)), "whilecond");
+  // Convert condition to a bool by comparing non-equal to 0.
+  whilecond_exp = builder.CreateICmpNE(whilecond_exp, llvm::ConstantInt::get(int_type, 0, true), "whilecond");
 
   // Create blocks for the then and else cases.  Insert the 'then' block at the
   // end of the function.
@@ -112,15 +140,24 @@ antlrcpp::Any JackRealVisitor::visitWhileStatement(JackParser::WhileStatementCon
   // Emit next block.
   builder.SetInsertPoint(NextBB);
 
+  VLOG(6) << "---- Finished Parsing While Statement ----"; 
+  
   return nullptr;
 }
 
 antlrcpp::Any JackRealVisitor::visitDoStatement(JackParser::DoStatementContext *ctx) {
+  VLOG(6) << "---- Parsing Do Statement ----"; 
+  
   this->visitSubroutineCall(ctx->subroutineCall());
+  
+  VLOG(6) << "---- Finished Parsing Do Statement ----"; 
+  
   return nullptr;
 }
 
 antlrcpp::Any JackRealVisitor::visitReturnStatement(JackParser::ReturnStatementContext *ctx) {
+  VLOG(6) << "---- Parsing Return Statement ----"; 
+  
   JackParser::ExpressionContext* exp_ctx = ctx->expression();
   auto builder = getBuilder();
   if(exp_ctx) {
@@ -130,6 +167,8 @@ antlrcpp::Any JackRealVisitor::visitReturnStatement(JackParser::ReturnStatementC
   } else {
     builder.CreateRetVoid();
   }
+  
+  VLOG(6) << "---- Finished Parsing Return Statement ----"; 
 
   return nullptr;
 }
@@ -141,6 +180,8 @@ antlrcpp::Any JackRealVisitor::visitLetStatement(JackParser::LetStatementContext
   std::vector<JackParser::ExpressionContext*> exp_ctxs = ctx->expression();
   assert(exp_ctxs.size() > 0 && "Let statement has to have at least right value");
   assert(exp_ctxs.size() < 3 && "Let statement can only have at most 2 expressions");
+  
+  VLOG(6) << "---- Parsing Let Statement ----"; 
 
   llvm::Value* r_val = this->visitExpression(exp_ctxs.back()).as<llvm::Value*>();
   llvm::Value* var_addr = this->variableLookup(var_name);
@@ -162,6 +203,8 @@ antlrcpp::Any JackRealVisitor::visitLetStatement(JackParser::LetStatementContext
     builder.CreateStore(r_val, var_addr);
     
   }
+  
+  VLOG(6) << "---- Finished Parsing Let Statement ----"; 
 
   return nullptr;
 }
@@ -172,6 +215,8 @@ antlrcpp::Any JackRealVisitor::visitCastStatement(JackParser::CastStatementConte
   
   llvm::Type* srcType = var_addr->getType();
   llvm::Type* dstType = this->visitType(ctx->type()).as<llvm::Type*>();
+  
+  VLOG(6) << "---- Parsing Cast Statement ----"; 
 
   auto builder = getBuilder();
   if(srcType->isIntegerTy() && dstType->isIntegerTy()) {
@@ -185,6 +230,8 @@ antlrcpp::Any JackRealVisitor::visitCastStatement(JackParser::CastStatementConte
   } else {
     assert(false && "Src and Dst of cast statement has to be both basic type or both ptr types, cannot do mix");
   }
+  
+  VLOG(6) << "---- Finished Parsing Cast Statement ----"; 
   
   return nullptr;
 }
