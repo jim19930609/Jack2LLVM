@@ -44,71 +44,73 @@ antlrcpp::Any JackRealVisitor::visitStatement(JackParser::StatementContext *ctx)
 
 
 antlrcpp::Any JackRealVisitor::visitIfStatement(JackParser::IfStatementContext *ctx) {
-  Function* F = this->Module->getFunction(this->visitorHelper.current_function_name);
+  Function* F = getModule().getFunction(this->visitorHelper.current_function_name);
   JackParser::ExpressionContext* exp_ctx = ctx->expression();
-  Value* ifcond_exp = this->visitExpression(exp_ctx);
+  Value* ifcond_exp = this->visitExpression(exp_ctx).as<Value*>();
   assert(ifcond_exp && "Unable to parser if condition expression");
 
   // Convert condition to a bool by comparing non-equal to 0.0.
-  ifcond_exp = Builder->CreateFCmpONE(ifcond_exp, ConstantFP::get(this->Context, APFloat(0.0)), "ifcond");
+  auto builder = getBuilder();
+  ifcond_exp = builder.CreateFCmpONE(ifcond_exp, ConstantFP::get(getContext(), APFloat(0.0)), "ifcond");
 
   // Create blocks for the then and else cases.  Insert the 'then' block at the
   // end of the function.
-  BasicBlock *ThenBB = BasicBlock::Create(this->Context, "then",    F);
-  BasicBlock *ElseBB = BasicBlock::Create(this->Context, "else",    F);
-  BasicBlock *MergeBB = BasicBlock::Create(this->Context, "ifcont", F);
+  BasicBlock *ThenBB = BasicBlock::Create(getContext(), "then",    F);
+  BasicBlock *ElseBB = BasicBlock::Create(getContext(), "else",    F);
+  BasicBlock *MergeBB = BasicBlock::Create(getContext(), "ifcont", F);
 
-  Builder->CreateCondBr(ifcond_exp, ThenBB, ElseBB);
+  builder.CreateCondBr(ifcond_exp, ThenBB, ElseBB);
 
   std::vector<JackParser::StatementsContext*> statements = ctx->statements();
   assert(statements.size() > 0 && "Then and Else statements cannot be both empty");
   assert(statements.size() < 3 && "If Statement cannot have more than 2 statements");
   
   // Emit then value.
-  Builder->SetInsertPoint(ThenBB);
+  builder.SetInsertPoint(ThenBB);
   this->visitStatements(statements[0]);
-  Builder->CreateBr(MergeBB);
+  builder.CreateBr(MergeBB);
 
   // Emit else block.
   if(statements.size() == 2) {
-    Builder->SetInsertPoint(ElseBB);
+    builder.SetInsertPoint(ElseBB);
     this->visitStatements(statements[1]);
-    Builder->CreateBr(MergeBB);
+    builder.CreateBr(MergeBB);
   }
 
   // Nothing to insert for merge block.
-  Builder->SetInsertPoint(MergeBB);
+  builder.SetInsertPoint(MergeBB);
 
   return nullptr;
 }
 
 
 antlrcpp::Any JackRealVisitor::visitWhileStatement(JackParser::WhileStatementContext *ctx) {
-  Function* F = this->Module->getFunction(this->visitorHelper.current_function_name);
-  BasicBlock *CondBB = BasicBlock::Create(this->Context, "whilecond", F);
-  BasicBlock *WhileBB = BasicBlock::Create(this->Context, "while",    F);
-  BasicBlock *NextBB = BasicBlock::Create(this->Context, "next", F);
-
-  Builder->SetInsertPoint(CondBB);
+  Function* F = getModule().getFunction(this->visitorHelper.current_function_name);
+  BasicBlock *CondBB = BasicBlock::Create(getContext(), "whilecond", F);
+  BasicBlock *WhileBB = BasicBlock::Create(getContext(), "while",    F);
+  BasicBlock *NextBB = BasicBlock::Create(getContext(), "next", F);
+ 
+  auto builder = getBuilder();
+  builder.SetInsertPoint(CondBB);
   JackParser::ExpressionContext* exp_ctx = ctx->expression();
-  Value* whilecond_exp = this->visitExpression(exp_ctx);
+  Value* whilecond_exp = this->visitExpression(exp_ctx).as<Value*>();
   assert(whilecond_exp && "Unable to parser while condition expression");
 
   // Convert condition to a bool by comparing non-equal to 0.0.
-  whilecond_exp = Builder->CreateFCmpONE(whilecond_exp, ConstantFP::get(this->Context, APFloat(0.0)), "whilecond");
+  whilecond_exp = builder.CreateFCmpONE(whilecond_exp, ConstantFP::get(getContext(), APFloat(0.0)), "whilecond");
 
   // Create blocks for the then and else cases.  Insert the 'then' block at the
   // end of the function.
 
-  Builder->CreateCondBr(whilecond_exp, WhileBB, NextBB);
+  builder.CreateCondBr(whilecond_exp, WhileBB, NextBB);
 
   // Emit while value.
-  Builder->SetInsertPoint(WhileBB);
+  builder.SetInsertPoint(WhileBB);
   this->visitStatements(ctx->statements());
-  Builder->CreateBr(CondBB);
+  builder.CreateBr(CondBB);
 
   // Emit next block.
-  Builder->SetInsertPoint(NextBB);
+  builder.SetInsertPoint(NextBB);
 
   return nullptr;
 }
@@ -120,12 +122,13 @@ antlrcpp::Any JackRealVisitor::visitDoStatement(JackParser::DoStatementContext *
 
 antlrcpp::Any JackRealVisitor::visitReturnStatement(JackParser::ReturnStatementContext *ctx) {
   JackParser::ExpressionContext* exp_ctx = ctx->expression();
+  auto builder = getBuilder();
   if(exp_ctx) {
-    Value* return_exp = this->visitExpression(exp_ctx);
-    Builder->CreateRet(return_exp);
+    Value* return_exp = this->visitExpression(exp_ctx).as<Value*>();
+    builder.CreateRet(return_exp);
 
   } else {
-    Builder->CreateRetVoid();
+    builder.CreateRetVoid();
   }
 
   return nullptr;
@@ -133,29 +136,30 @@ antlrcpp::Any JackRealVisitor::visitReturnStatement(JackParser::ReturnStatementC
 
 
 antlrcpp::Any JackRealVisitor::visitLetStatement(JackParser::LetStatementContext *ctx) {
-  Function* F = this->Module->getFunction(this->visitorHelper.current_function_name);
-  std::string var_name = this->visitVarName(ctx->varName());
+  Function* F = getModule().getFunction(this->visitorHelper.current_function_name);
+  std::string var_name = this->visitVarName(ctx->varName()).as<std::string>();
   std::vector<JackParser::ExpressionContext*> exp_ctxs = ctx->expression();
   assert(exp_ctxs.size() > 0 && "Let statement has to have at least right value");
   assert(exp_ctxs.size() < 3 && "Let statement can only have at most 2 expressions");
 
-  llvm::Value* r_val = this->visitExpression(exp_ctxs.back());
+  llvm::Value* r_val = this->visitExpression(exp_ctxs.back()).as<llvm::Value*>();
   llvm::Value* var_addr = this->variableLookup(var_name);
+  auto builder = getBuilder();
   if(exp_ctxs.size() == 2) {
     // VarName[exp] = exp
     // Use GEP Inst
-    llvm::Value* index = this->visitExpression(exp_ctxs.front());
+    llvm::Value* index = this->visitExpression(exp_ctxs.front()).as<llvm::Value*>();
     std::vector<llvm::Value*> indices(2);
-    indices[0] = llvm::ConstantInt::get(this->Context, llvm::APInt(32, 0, true)); // Get the pointer itself
+    indices[0] = llvm::ConstantInt::get(getContext(), llvm::APInt(32, 0, true)); // Get the pointer itself
     indices[1] = index; // Get indexed member
     
-    llvm::Value* member_addr = Builder->CreateGEP(var_addr, indices, "memberaddr");
-    Builder->CreateStore(r_val, member_addr);
+    llvm::Value* member_addr = builder.CreateGEP(var_addr, indices, "memberaddr");
+    builder.CreateStore(r_val, member_addr);
     
   } else {
     // VarName = exp
     // Use store Inst
-    Builder->CreateStore(r_val, var_addr);
+    builder.CreateStore(r_val, var_addr);
     
   }
 
@@ -163,19 +167,20 @@ antlrcpp::Any JackRealVisitor::visitLetStatement(JackParser::LetStatementContext
 }
 
 antlrcpp::Any JackRealVisitor::visitCastStatement(JackParser::CastStatementContext *ctx) {
-  std::string var_name = this->visitVarName(ctx->varName());
+  std::string var_name = this->visitVarName(ctx->varName()).as<std::string>();
   llvm::Value* var_addr = this->variableLookup(var_name);
   
   llvm::Type* srcType = var_addr->getType();
-  llvm::Type* dstType = this->visitType(ctx->type());
+  llvm::Type* dstType = this->visitType(ctx->type()).as<llvm::Type*>();
 
+  auto builder = getBuilder();
   if(srcType->isIntegerTy() && dstType->isIntegerTy()) {
-    llvm::Value* var_val = this->Builder->CreateLoad(var_addr, "load_for_cast");
-    llvm::Value* casted_val = this->Builder->CreateIntCast(var_val, dstType, true, "basic_type_cast");
-    this->Builder->CreateStore(casted_val, var_addr);
+    llvm::Value* var_val = builder.CreateLoad(var_addr, "load_for_cast");
+    llvm::Value* casted_val = builder.CreateIntCast(var_val, dstType, true, "basic_type_cast");
+    builder.CreateStore(casted_val, var_addr);
 
   } else if(srcType->isStructTy() && dstType->isStructTy()) {
-    this->Builder->CreatePointerCast(var_addr, dstType, "struct_type_cast");
+    builder.CreatePointerCast(var_addr, dstType, "struct_type_cast");
 
   } else {
     assert(false && "Src and Dst of cast statement has to be both basic type or both ptr types, cannot do mix");

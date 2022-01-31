@@ -20,10 +20,10 @@ antlrcpp::Any JackRealVisitor::visitClassDec(JackParser::ClassDecContext *ctx) {
   std::vector<std::string> vtable_function_order;
   if(class_name_ctxs.size() == 2) {
     JackParser::ClassNameContext* parent_class_name_ctx = class_name_ctxs[1];
-    std::string parent_class_name = this->visitClassName(parent_class_name_ctx);
+    std::string parent_class_name = this->visitClassName(parent_class_name_ctx).as<std::string>();
     
     // Member variable
-    llvm::StructType* parent_type = this->Module->getTypeByName(parent_class_name);
+    llvm::StructType* parent_type = getModule().getTypeByName(parent_class_name);
     for(size_t i=0; i<parent_type->getNumElements(); i++) {
       llvm::Type* member_type = parent_type->getTypeAtIndex(i);
       std::string member_name;
@@ -49,7 +49,7 @@ antlrcpp::Any JackRealVisitor::visitClassDec(JackParser::ClassDecContext *ctx) {
   }
 
   JackParser::ClassNameContext* class_name_ctx = class_name_ctxs[0];
-  std::string class_name_text = this->visitClassName(class_name_ctx);
+  std::string class_name_text = this->visitClassName(class_name_ctx).as<std::string>();
 
   // ClassDec Members
   const std::vector<JackParser::ClassVarDecContext *>& class_var_decs = ctx->classVarDec();
@@ -65,7 +65,7 @@ antlrcpp::Any JackRealVisitor::visitClassDec(JackParser::ClassDecContext *ctx) {
   std::vector<std::pair<std::string, llvm::Type*>> field_class_vars;
   for(JackParser::ClassVarDecContext* class_var_dec_ctx : class_var_decs) {
     
-    std::vector<std::pair<std::string, llvm::Type*>> class_vars = this->visitClassVarDec(class_var_dec_ctx);
+    std::vector<std::pair<std::string, llvm::Type*>> class_vars = this->visitClassVarDec(class_var_dec_ctx).as<std::vector<std::pair<std::string, llvm::Type*>>>();
     assert(class_vars.size() > 0 && "Empty classVarDec is not allowed");
 
     std::string decorator = class_vars[0].first;
@@ -102,11 +102,11 @@ antlrcpp::Any JackRealVisitor::visitClassDec(JackParser::ClassDecContext *ctx) {
   // Insert virtual table to the end
   // Virtual table will be a struct containing pointer (i64 format) casted from Function*
   size_t num_subroutines = ctx->subroutineDec().size();
-  llvm::ArrayType* vtable = llvm::ArrayType::get(llvm::Type::getInt64Ty(this->Context), num_subroutines);
+  llvm::ArrayType* vtable = llvm::ArrayType::get(llvm::Type::getInt64Ty(getContext()), num_subroutines);
   this->visitorHelper.symtab_c["_vtable"] = struct_members.size();
   struct_members.push_back(vtable);
   
-  llvm::StructType* registered_class_type = llvm::StructType::create(this->Context, struct_members, class_name_text, true);
+  llvm::StructType* registered_class_type = llvm::StructType::create(getContext(), struct_members, class_name_text, true);
   assert(registered_class_type && "Unable to create class StructType during ClassDec");
   
   // Copy symtab_c
@@ -127,7 +127,7 @@ antlrcpp::Any JackRealVisitor::visitClassDec(JackParser::ClassDecContext *ctx) {
     // Apply special prefix to static member var
     // Then make it a global var
     std::string global_name_mangled = class_name_text + "." + global_name;
-    llvm::Constant* declared_global_var = this->Module->getOrInsertGlobal(global_name_mangled, global_type);
+    llvm::Constant* declared_global_var = getModule().getOrInsertGlobal(global_name_mangled, global_type);
     assert(declared_global_var && "Unable to register static member as global variable");
   
     // Update global var names mapping
@@ -170,7 +170,7 @@ antlrcpp::Any JackRealVisitor::visitClassDec(JackParser::ClassDecContext *ctx) {
 
 
 antlrcpp::Any JackRealVisitor::visitSubroutineDec(JackParser::SubroutineDecContext *ctx) {
-  llvm::Type* this_type = this->Module->getTypeByName(this->visitorHelper.current_class_name);
+  llvm::Type* this_type = getModule().getTypeByName(this->visitorHelper.current_class_name);
   // ------------------------ //
   // Parse function decorator //
   // ------------------------ //
@@ -185,7 +185,7 @@ antlrcpp::Any JackRealVisitor::visitSubroutineDec(JackParser::SubroutineDecConte
   // Subroutine Name //
   // --------------- //
   JackParser::SubroutineNameContext* subroutine_name_ctx = ctx->subroutineName();
-  std::string subroutine_name = this->visitSubroutineName(subroutine_name_ctx);
+  std::string subroutine_name = this->visitSubroutineName(subroutine_name_ctx).as<std::string>();
   std::string subroutine_name_mangled;
   
   // Add prefix to function name
@@ -209,10 +209,10 @@ antlrcpp::Any JackRealVisitor::visitSubroutineDec(JackParser::SubroutineDecConte
   // Parse return type //
   // ----------------- //
   // Default return type is void
-  llvm::Type* return_type = llvm::Type::getVoidTy(this->Context);
+  llvm::Type* return_type = llvm::Type::getVoidTy(getContext());
   JackParser::TypeContext* return_type_ctx = ctx->type();
   if(return_type_ctx) {
-    return_type = this->visitType(return_type_ctx);
+    return_type = this->visitType(return_type_ctx).as<llvm::Type*>();
   }
   
   // ------------------ //
@@ -221,7 +221,7 @@ antlrcpp::Any JackRealVisitor::visitSubroutineDec(JackParser::SubroutineDecConte
   // Construct parameter list
   // visitParameterList() returns vector of arguments llvm::Type
   JackParser::ParameterListContext* parameter_list_ctx = ctx->parameterList();
-  std::pair<std::vector<llvm::Type*>, std::vector<std::string>> argument_list = this->visitParameterList(parameter_list_ctx);
+  std::pair<std::vector<llvm::Type*>, std::vector<std::string>> argument_list = this->visitParameterList(parameter_list_ctx).as<std::pair<std::vector<llvm::Type*>, std::vector<std::string>>>();
 
   std::vector<llvm::Type*> argument_type_list = argument_list.first;
   std::vector<std::string> argument_name_list = argument_list.second;
@@ -234,7 +234,7 @@ antlrcpp::Any JackRealVisitor::visitSubroutineDec(JackParser::SubroutineDecConte
 
   // Create Function
   llvm::FunctionType *FT = llvm::FunctionType::get(return_type, argument_type_list, false);
-  llvm::Function *F = llvm::Function::Create(FT, llvm::Function::ExternalLinkage, subroutine_name_mangled, this->Module.get());
+  llvm::Function *F = llvm::Function::Create(FT, llvm::Function::ExternalLinkage, subroutine_name_mangled, getModule());
 
   // Set Argument names
   size_t Idx = 0;
@@ -261,10 +261,10 @@ antlrcpp::Any JackRealVisitor::visitParameterList(JackParser::ParameterListConte
   std::vector<JackParser::VarNameContext*> var_name_ctxs = ctx->varName();
   for(size_t i=0; i<type_ctxs.size(); i++) {
     // Parse Type
-    llvm::Type* argType = this->visitType(type_ctxs[i]);
+    llvm::Type* argType = this->visitType(type_ctxs[i]).as<llvm::Type*>();
     types.emplace_back(argType);
 
-    std::string var_name_str = this->visitVarName(var_name_ctxs[i]);
+    std::string var_name_str = this->visitVarName(var_name_ctxs[i]).as<std::string>();
     names.emplace_back(var_name_str);
   }
 
@@ -273,13 +273,15 @@ antlrcpp::Any JackRealVisitor::visitParameterList(JackParser::ParameterListConte
 
 
 antlrcpp::Any JackRealVisitor::visitSubroutineBody(JackParser::SubroutineBodyContext *ctx) {
-  llvm::Function* F = this->Module->getFunction(this->visitorHelper.current_function_name);
+  llvm::Function* F = getModule().getFunction(this->visitorHelper.current_function_name);
   // ---------------- //
   // Parse statements //
   // ---------------- //
   // 1. Add entry BB
-  llvm::BasicBlock* BB = llvm::BasicBlock::Create(this->Context, "entry", F);
-  this->Builder->SetInsertPoint(BB);
+  llvm::BasicBlock* BB = llvm::BasicBlock::Create(getContext(), "entry", F);
+
+  auto builder = getBuilder();
+  builder.SetInsertPoint(BB);
   
   // -------------------------- //
   // Init and Contruct symtab_l //
@@ -288,11 +290,11 @@ antlrcpp::Any JackRealVisitor::visitSubroutineBody(JackParser::SubroutineBodyCon
   this->visitorHelper.symtab_l.clear();
   std::vector<JackParser::VarDecContext*> var_dec_ctxs = ctx->varDec();
   for(const auto& var_dec_ctx : var_dec_ctxs) {
-    std::vector<std::pair<std::string, llvm::Type*>> local_vars = this->visitVarDec(var_dec_ctx);
+    std::vector<std::pair<std::string, llvm::Type*>> local_vars = this->visitVarDec(var_dec_ctx).as<std::vector<std::pair<std::string, llvm::Type*>>>();
     for(const auto& kv : local_vars) {
       std::string name = kv.first;
       llvm::Type* type = kv.second;
-      llvm::AllocaInst* var_addr = Builder->CreateAlloca(type, 0, name);
+      llvm::AllocaInst* var_addr = builder.CreateAlloca(type, 0, name);
       this->visitorHelper.symtab_l[name] = var_addr;
     }
   }
@@ -305,8 +307,8 @@ antlrcpp::Any JackRealVisitor::visitSubroutineBody(JackParser::SubroutineBodyCon
   this->visitorHelper.symtab_a.clear();
   if(this->visitorHelper.function_decorator == "constructor") {
     std::string class_name = this->visitorHelper.current_class_name;
-    llvm::Type* this_type = this->Module->getTypeByName(class_name);
-    llvm::AllocaInst* this_addr = Builder->CreateAlloca(this_type, 0, "this");
+    llvm::Type* this_type = getModule().getTypeByName(class_name);
+    llvm::AllocaInst* this_addr = builder.CreateAlloca(this_type, 0, "this");
     this->visitorHelper.symtab_a["this"] = this_addr;
 
     // Now update vtable
@@ -323,19 +325,19 @@ antlrcpp::Any JackRealVisitor::visitSubroutineBody(JackParser::SubroutineBodyCon
     for(size_t function_index=0; function_index<vtable_functions.size(); function_index++) {
       std::string function_name = vtable_functions[function_index];
       std::string function_name_mangled = func_name_mapping[function_name];
-      llvm::Function* member_function = this->Module->getFunction(function_name_mangled);
+      llvm::Function* member_function = getModule().getFunction(function_name_mangled);
       
       // Index has 3 levels:
       // 1. Pointer itself
       // 2. Vtable addr in this_type
       // 3. Function index in Vtable
       std::vector<llvm::Value*> indices(3);
-      indices[0] = llvm::ConstantInt::get(this->Context, llvm::APInt(32, 0, true)); // Get the pointer itself
-      indices[1] = llvm::ConstantInt::get(this->Context, llvm::APInt(32, vtable_index, true));
-      indices[2] = llvm::ConstantInt::get(this->Context, llvm::APInt(32, function_index, true));
+      indices[0] = llvm::ConstantInt::get(getContext(), llvm::APInt(32, 0, true)); // Get the pointer itself
+      indices[1] = llvm::ConstantInt::get(getContext(), llvm::APInt(32, vtable_index, true));
+      indices[2] = llvm::ConstantInt::get(getContext(), llvm::APInt(32, function_index, true));
 
-      llvm::Value* vtable_back_addr = Builder->CreateGEP(this_addr, indices, "function_addr_in_vtable");
-      Builder->CreateStore(member_function, vtable_back_addr);
+      llvm::Value* vtable_back_addr = builder.CreateGEP(this_addr, indices, "function_addr_in_vtable");
+      builder.CreateStore(member_function, vtable_back_addr);
     }
   }
 
@@ -363,7 +365,7 @@ antlrcpp::Any JackRealVisitor::visitVarDec(JackParser::VarDecContext *ctx) {
   // Find out the type
   // then create LLVM::Type correspondingly
   JackParser::TypeContext* type_ctx = ctx->type();
-  llvm::Type* varType = this->visitType(type_ctx);
+  llvm::Type* varType = this->visitType(type_ctx).as<llvm::Type*>();
 
   // ----------------------- //
   // Construct return Vector //
@@ -374,7 +376,7 @@ antlrcpp::Any JackRealVisitor::visitVarDec(JackParser::VarDecContext *ctx) {
   // Find out class variable name
   std::vector<JackParser::VarNameContext*> var_name_ctxs = ctx->varName();
   for(const auto var_name_ctx : var_name_ctxs) {
-    std::string var_name_str = this->visitVarName(var_name_ctx);
+    std::string var_name_str = this->visitVarName(var_name_ctx).as<std::string>();
     // Append {name, type} pairs to return vector
     local_vars.emplace_back(std::make_pair(var_name_str, varType));
   }
@@ -397,7 +399,7 @@ antlrcpp::Any JackRealVisitor::visitClassVarDec(JackParser::ClassVarDecContext *
   // Find out the type
   // then create LLVM::Type correspondingly
   JackParser::TypeContext* type_ctx = ctx->type();
-  llvm::Type* varType = this->visitType(type_ctx);
+  llvm::Type* varType = this->visitType(type_ctx).as<llvm::Type*>();
 
   // ----------------------- //
   // Construct return Vector //
@@ -408,7 +410,7 @@ antlrcpp::Any JackRealVisitor::visitClassVarDec(JackParser::ClassVarDecContext *
   // Find out class variable name
   std::vector<JackParser::VarNameContext*> var_name_ctxs = ctx->varName();
   for(const auto var_name_ctx : var_name_ctxs) {
-    std::string var_name_str = this->visitVarName(var_name_ctx);
+    std::string var_name_str = this->visitVarName(var_name_ctx).as<std::string>();
     // Append {name, type} pairs to return vector
     class_vars.emplace_back(std::make_pair(var_name_str, varType));
   }
@@ -422,11 +424,11 @@ llvm::Type* JackRealVisitor::getVarType(antlr4::tree::TerminalNode* var_type, Ja
     antlr4::Token* var_type_tok = var_type -> getSymbol();
     std::string var_type_str = var_type_tok->getText();
     if(var_type_str == "int") {
-      varType = llvm::Type::getInt32Ty(this->Context);
+      varType = llvm::Type::getInt32Ty(getContext());
     } else if(var_type_str == "char") {
-      varType = llvm::Type::getInt8Ty(this->Context);
+      varType = llvm::Type::getInt8Ty(getContext());
     } else if(var_type_str == "boolean") {
-      varType = llvm::Type::getInt1Ty(this->Context);
+      varType = llvm::Type::getInt1Ty(getContext());
     } else {
       assert(false && "Class variable basic types can only be 'int', 'char' or 'boolean'");
     }
@@ -435,9 +437,9 @@ llvm::Type* JackRealVisitor::getVarType(antlr4::tree::TerminalNode* var_type, Ja
 
   } else if(class_type_ctx) {
     // Get registered llvm::structType from llvm::Module
-    std::string identifier_text = this->visitClassName(class_type_ctx);
+    std::string identifier_text = this->visitClassName(class_type_ctx).as<std::string>();
     
-    varType = this->Module->getTypeByName(identifier_text);
+    varType = getModule().getTypeByName(identifier_text);
     assert(varType && "Class identifier used before declared");
     
     return varType;
@@ -456,7 +458,7 @@ antlrcpp::Any JackRealVisitor::visitType(JackParser::TypeContext *ctx) {
 
   llvm::Type* varType;
   if(array_type_ctx) {
-    varType = this->visitArrayType(array_type_ctx);
+    varType = this->visitArrayType(array_type_ctx).as<llvm::Type*>();
 
   } else {
     varType = getVarType(var_type, class_type_ctx);
@@ -509,6 +511,8 @@ antlrcpp::Any JackRealVisitor::visitSubroutineName(JackParser::SubroutineNameCon
 
 
 llvm::Value* JackRealVisitor::variableLookup(std::string name) {
+  auto builder = getBuilder();
+
   // lookup symtab_a
   if(this->visitorHelper.symtab_a.count(name))
     return this->visitorHelper.symtab_a[name];
@@ -525,21 +529,21 @@ llvm::Value* JackRealVisitor::variableLookup(std::string name) {
     llvm::Value* this_addr = this->visitorHelper.symtab_a["this"];
     // Get value using GEP on this
     std::vector<llvm::Value*> indices(2);
-    indices[0] = llvm::ConstantInt::get(this->Context, llvm::APInt(32, 0, true)); // Get the pointer itself
-    indices[1] = llvm::ConstantInt::get(this->Context, llvm::APInt(32, index, true));; // Get indexed member
+    indices[0] = llvm::ConstantInt::get(getContext(), llvm::APInt(32, 0, true)); // Get the pointer itself
+    indices[1] = llvm::ConstantInt::get(getContext(), llvm::APInt(32, index, true));; // Get indexed member
     
-    llvm::Value* member_addr = Builder->CreateGEP(this_addr, indices, "memberaddr");
+    llvm::Value* member_addr = builder.CreateGEP(this_addr, indices, "memberaddr");
 
     return member_addr;
   }
     
   // lookup Module->global
   // Get mangled global var name from class_var_func_name_mapping
-  llvm::Type* this_type = this->Module->getTypeByName(this->visitorHelper.current_class_name);
+  llvm::Type* this_type = getModule().getTypeByName(this->visitorHelper.current_class_name);
   std::string name_mangled = this->visitorHelper.class_globalvar_name_mapping[this_type][name];
 
   std::string error_message = "Undefined symbol used: " + name_mangled;
-  assert(this->Module->getGlobalVariable(name_mangled) && error_message.c_str());
-  return this->Module->getGlobalVariable(name_mangled);
+  assert(getModule().getGlobalVariable(name_mangled) && error_message.c_str());
+  return getModule().getGlobalVariable(name_mangled);
 
 }

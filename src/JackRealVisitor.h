@@ -13,6 +13,9 @@
 /**
  * This class provides an empty implementation of JackVisitor, which can be
  * extended to create a visitor which only needs to handle a subset of the available methods.
+ * 
+ * Note that the translation unit of JackRealVisitor is at Class-level, and there is another 
+ * upper-level controller that handles cross-class compilations
  */
 class  JackRealVisitor : public JackVisitor {
 public:
@@ -46,24 +49,24 @@ public:
   virtual antlrcpp::Any visitClassName(JackParser::ClassNameContext *ctx) override;
   virtual antlrcpp::Any visitVarName(JackParser::VarNameContext *ctx) override;
   virtual antlrcpp::Any visitVarDec(JackParser::VarDecContext *ctx) override;
-
-  std::shared_ptr<llvm::Module> getModule() { return Module; }
-
-  JackRealVisitor() {
-    // Suppose we only handle one single module
-    // TODO: Add linking and relocation [future]
-    Module = std::make_unique<llvm::Module>("Yet Another Module", Context);
-    Builder = std::make_unique<llvm::IRBuilder<>>(Context);
+  
+  // Constructor
+  JackRealVisitor() : module_("Yet Another Module", context_), builder_(context_){
   }
+
+  // Member Access
+  llvm::LLVMContext& getContext() { return context_; }
+  llvm::Module& getModule() { return module_; }
+  llvm::IRBuilder<>& getBuilder() { return builder_; }
 
   llvm::Value* variableLookup(std::string name);
   llvm::Type*  getVarType(antlr4::tree::TerminalNode* var_type, JackParser::ClassNameContext* class_type_ctx);
 
 private:
   // LLVM Members
-  llvm::LLVMContext Context;
-  std::shared_ptr<llvm::Module> Module;
-  std::shared_ptr<llvm::IRBuilder<>> Builder;
+  llvm::LLVMContext context_;
+  llvm::Module module_;
+  llvm::IRBuilder<> builder_;
 
   struct LoweringHints {
 
@@ -91,15 +94,20 @@ private:
     // -reset with SubroutineDec
     std::unordered_map<std::string, llvm::Value*> symtab_a;
 
-    // Map class member name to index
+    // [Global] Map class member name to index
     std::unordered_map<llvm::Type*, std::unordered_map<std::string, size_t>> class_member_name_to_index;
     
-    // Raw name to actual registered name 
+    // [Global] Raw Name to Mangled Name
+    // class methods name mangling
     std::unordered_map<llvm::Type*, std::unordered_map<std::string, std::string>> class_func_name_mapping;
+    // class functions name mangling
     std::unordered_map<llvm::Type*, std::unordered_map<std::string, std::string>> static_func_name_mapping;
+    
+    // [Global] static class member name mangling
+    // example: Car.wheel -> Car_wheel
     std::unordered_map<llvm::Type*, std::unordered_map<std::string, std::string>> class_globalvar_name_mapping;
     
-    // demangled name
+    // [Global] demangled name
     std::unordered_map<llvm::Type*, std::vector<std::string>> class_vtable_function_order;
 
     std::string current_class_name;

@@ -5,15 +5,16 @@ GRAMMAR=Jack
 MAIN=main
 
 LANGSRC=$(SRC)/language_src
-ANTLRLIB=$(SRC)/runtime_lib/antlr-4.7-complete.jar
-RUNTIMELIB=$(SRC)/runtime_lib/runtime-osx
+ANTLRLIB=$(SRC)/runtime_lib/antlr-4.9.3-complete.jar
+RUNTIMELIB=$(SRC)/runtime_lib/runtime-linux
 
 # here is where you plug in the runtime for your OS
 ANTLR=$(JAVA) -jar $(ANTLRLIB)
-CC=g++
-CCARGS=-c -I $(RUNTIMELIB)/antlr4-runtime/ -I $(LANGSRC) -I $(SRC) -std=c++14	
+CC=/usr/local/gcc-8.2/bin/g++
+CXX=/usr/local/gcc-8.2/bin/g++
+CCARGS=-c -I $(RUNTIMELIB)/antlr4-runtime/ -I $(LANGSRC) -I $(SRC) -std=c++14
 LDARGS=-g
-SRCS=$(RUNTIMELIB)/lib/libantlr4-runtime.a
+SRCS=$(RUNTIMELIB)/lib/libantlr4-runtime.a -lglog
 LLVMINCLUDE=`llvm-config --cflags` -std=c++14
 LLVMLINK=`llvm-config --ldflags --system-libs --libs core`
 
@@ -33,7 +34,7 @@ runtime: build-dirs $(MAIN).cpp
 	
 	# main lib
 	$(CC) $(CCARGS) $(LLVMINCLUDE) $(MAIN).cpp  -o $(BUILD)/$(MAIN).o 
-	$(CC) $(LDARGS) $(LLVMLINK) $(BUILD)/$(MAIN).o $(BUILD)/$(GRAMMAR)ClassVisitor.o $(BUILD)/$(GRAMMAR)StatementVisitor.o $(BUILD)/$(GRAMMAR)ExpressionVisitor.o $(BUILD)/$(GRAMMAR)Lexer.o $(BUILD)/$(GRAMMAR)Visitor.o $(BUILD)/$(GRAMMAR)Parser.o $(SRCS) -o $(BUILD)/$(MAIN).out
+	$(CC) $(LDARGS) $(LLVMLINK) $(BUILD)/$(MAIN).o $(BUILD)/$(GRAMMAR)ClassVisitor.o $(BUILD)/$(GRAMMAR)StatementVisitor.o $(BUILD)/$(GRAMMAR)ExpressionVisitor.o $(BUILD)/$(GRAMMAR)Lexer.o  $(BUILD)/$(GRAMMAR)Visitor.o $(BUILD)/$(GRAMMAR)Parser.o $(SRCS) -o $(BUILD)/$(MAIN).out
 
 language: lang-dirs $(GRAMMAR).g4
 	$(ANTLR) -Dlanguage=Cpp -o $(LANGSRC) $(GRAMMAR).g4 -no-listener -visitor
