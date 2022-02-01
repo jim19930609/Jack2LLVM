@@ -322,7 +322,7 @@ antlrcpp::Any JackRealVisitor::visitSubroutineBody(JackParser::SubroutineBodyCon
   VLOG(6) << "---- Parsing Subroutine Body ----";
   llvm::BasicBlock* BB = llvm::BasicBlock::Create(getContext(), "entry", F);
 
-  auto builder = getBuilder();
+  auto& builder = getBuilder();
   builder.SetInsertPoint(BB);
   
   // -------------------------- //
@@ -571,15 +571,17 @@ antlrcpp::Any JackRealVisitor::visitSubroutineName(JackParser::SubroutineNameCon
 
 
 llvm::Value* JackRealVisitor::variableLookup(std::string name) {
-  auto builder = getBuilder();
+  auto& builder = getBuilder();
 
   // lookup symtab_a
-  if(this->visitorHelper.symtab_a.count(name))
+  if(this->visitorHelper.symtab_a.count(name)) {
     return this->visitorHelper.symtab_a[name];
-  
+  }
+
   // lookup symtab_l
-  if(this->visitorHelper.symtab_l.count(name))
+  if(this->visitorHelper.symtab_l.count(name)) {
     return this->visitorHelper.symtab_l[name];
+  }
   
   // lookup symtab_c
   if(this->visitorHelper.symtab_c.count(name)) {
@@ -592,9 +594,9 @@ llvm::Value* JackRealVisitor::variableLookup(std::string name) {
     indices[0] = llvm::ConstantInt::get(getContext(), llvm::APInt(32, 0, true)); // Get the pointer itself
     indices[1] = llvm::ConstantInt::get(getContext(), llvm::APInt(32, index, true));; // Get indexed member
     
-    llvm::Value* member_addr = builder.CreateGEP(this_addr, indices, "memberaddr");
+    llvm::Value* member = builder.CreateGEP(this_addr, indices, "member");
 
-    return member_addr;
+    return member;
   }
     
   // lookup Module->global

@@ -1,5 +1,6 @@
 #include "JackRealVisitor.h"
 #include "llvm/IR/Type.h"
+#include "llvm/IR/Constants.h"
 
 antlrcpp::Any JackRealVisitor::visitExpression(JackParser::ExpressionContext *ctx) {
   std::vector<antlr4::tree::TerminalNode*> op_list = ctx->OP();
@@ -11,13 +12,15 @@ antlrcpp::Any JackRealVisitor::visitExpression(JackParser::ExpressionContext *ct
   assert(term_list.size() == op_list.size() + 1 && "Expression number of terms mismatch number of ops");
 
   llvm::Value* LHS = this->visitTerm(term_list[0]).as<llvm::Value*>();
-  auto builder = getBuilder();
+  auto& builder = getBuilder();
   for(size_t i=0; i<op_list.size(); i++) {
     llvm::Value* RHS = this->visitTerm(term_list[i+1]).as<llvm::Value*>();
     
     // Check LHS & RHS having the same datatype
     llvm::Type* lhs_type = LHS->getType();
     llvm::Type* rhs_type = RHS->getType();
+
+    assert(lhs_type == rhs_type && "LHS & RHS should have the same datatype");
 
     antlr4::Token* op_tok = op_list[i]->getSymbol();
     std::string op_text = op_tok->getText();
@@ -63,7 +66,7 @@ antlrcpp::Any JackRealVisitor::visitTerm(JackParser::TermContext *ctx) {
   antlr4::tree::TerminalNode* unary_op_ctx = ctx->UNARYOP();
   JackParser::TermContext* term_ctx = ctx->term();
     
-  auto builder = getBuilder();
+  auto& builder = getBuilder();
   
   // intergerConstant
   if(integer_constant_ctx) {
@@ -94,17 +97,20 @@ antlrcpp::Any JackRealVisitor::visitTerm(JackParser::TermContext *ctx) {
     VLOG(6) << "Parsing Keyword Term : " << keyword;
 
     if(keyword == "true"){
-      return llvm::APInt(1, 1, true);
+      llvm::Value* return_val = llvm::ConstantInt::getTrue(getContext());
+      return return_val;
     
     } else if(keyword == "false") {
-      return llvm::APInt(1, 0, true);
+      llvm::Value* return_val = llvm::ConstantInt::getFalse(getContext());
+      return return_val;
     
     } else if(keyword == "null") {
-      return llvm::ConstantPointerNull::get(llvm::Type::getInt32PtrTy(getContext()));
+      llvm::Value* return_val = llvm::ConstantPointerNull::get(llvm::Type::getInt32PtrTy(getContext()));
+      return return_val;
     
     } else if(keyword == "this") {
-      assert(this->visitorHelper.symtab_a.count("this") && "Unable to find 'this' in symbol table");
-      return this->visitorHelper.symtab_a["this"];
+      llvm::Value* return_val = variableLookup("this");
+      return return_val;
     
     } else {
       assert(false && "Unrecognized keyword constant");
@@ -128,7 +134,8 @@ antlrcpp::Any JackRealVisitor::visitTerm(JackParser::TermContext *ctx) {
     
     VLOG(6) << "Parsing VarName.VarName Term : " << class_var_name << "." << member_var_name;
     
-    return builder.CreateLoad(member_addr, "loadvalue");
+    llvm::Value* member_val = builder.CreateLoad(member_addr, "loadvalue");
+    return member_val;
   }
 
   assert(var_name_ctxs.size() == 1 && "Invalid number of VarNames found in Term");
@@ -147,15 +154,17 @@ antlrcpp::Any JackRealVisitor::visitTerm(JackParser::TermContext *ctx) {
     llvm::Value* member_addr = builder.CreateGEP(var_addr, indices, "array_member_addr");
     
     VLOG(6) << "Parsing VarName[expression] Term : " << var_name;
-    
-    return builder.CreateLoad(member_addr, "loadvalue");
+    llvm::Value* member_val = builder.CreateLoad(member_addr, "loadvalue");
+    return member_val;
   }
   
   // varName
   if(var_name_ctx) {
     std::string var_name = this->visitVarName(var_name_ctx).as<std::string>();
     VLOG(6) << "Parsing VarName Term : " << var_name;
-    return variableLookup(var_name);
+    llvm::Value* var_addr = variableLookup(var_name);
+    llvm::Value* var_val = builder.CreateLoad(var_addr, "loadvalue");
+    return var_val;
   }
   
   // (expression)
@@ -179,9 +188,11 @@ antlrcpp::Any JackRealVisitor::visitTerm(JackParser::TermContext *ctx) {
     VLOG(6) << "Parsed unaryOp Term: " << unary_op_text;
 
     if(unary_op_text == "-") {
-      return builder.CreateNeg(term_val, "neg");
+      llvm::Value* return_val = builder.CreateNeg(term_val, "neg");
+      return return_val;
     } else if(unary_op_text == "~") {
-      return builder.CreateNot(term_val, "not");
+      llvm::Value* return_val = builder.CreateNot(term_val, "not");
+      return return_val;
     } else {
       assert(false && "Unrecognized unary op");
     }
@@ -204,7 +215,7 @@ antlrcpp::Any JackRealVisitor::visitSubroutineCall(JackParser::SubroutineCallCon
     // Parse FunctionName to get Function
     std::string function_name = this->visitSubroutineName(subroutine_name_ctx).as<std::string>();
     std::string function_name_mangled;
-    auto builder = getBuilder();
+    auto& builder = getBuilder();
     if(class_name_ctx) {
       // "function": static function call
       std::string class_name = this->visitClassName(class_name_ctx).as<std::string>();
@@ -225,7 +236,9 @@ antlrcpp::Any JackRealVisitor::visitSubroutineCall(JackParser::SubroutineCallCon
       std::string var_name = this->visitVarName(var_name_ctx).as<std::string>();
 
       // Get class type
-      llvm::Value* var_value = variableLookup(var_name);
+      llvm::Value* var_addr = variableLookup(var_name);
+      llvm::Value* var_value = builder.CreateLoad(var_addr, "loadvalue");
+
       llvm::Type*  class_type = var_value->getType();
       assert(class_type->isStructTy() && "Variable is not callable");
 

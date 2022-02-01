@@ -52,20 +52,12 @@ antlrcpp::Any JackRealVisitor::visitIfStatement(JackParser::IfStatementContext *
   VLOG(6) << "---- Parsing If Statement ----"; 
 
   // Convert condition to a bool by comparing non-equal to 0.0.
-  auto builder = getBuilder();
+  auto& builder = getBuilder();
   Type* ifcond_exp_type = ifcond_exp->getType();
-  llvm::IntegerType* int_type;
-  if(ifcond_exp_type->isIntegerTy(1)) {
-    int_type = llvm::IntegerType::get(getContext(), 1);
-  } else if(ifcond_exp_type->isIntegerTy(8)) {
-    int_type = llvm::IntegerType::get(getContext(), 8);
-  } else if(ifcond_exp_type->isIntegerTy(32)) {
-    int_type = llvm::IntegerType::get(getContext(), 32);
-  } else {
-    assert(false && "ifcond_exp_type should be within 1, 8 or 32.");
-  }
-  ifcond_exp = builder.CreateICmpNE(ifcond_exp, llvm::ConstantInt::get(int_type, 0, true), "ifcond");
-
+  
+  // Check if cond_expression is boolean
+  assert(ifcond_exp_type->isIntegerTy(1) && "Condition expression has to be boolean");
+  
   // Create blocks for the then and else cases.  Insert the 'then' block at the
   // end of the function.
   BasicBlock *ThenBB = BasicBlock::Create(getContext(), "then",    F);
@@ -106,26 +98,15 @@ antlrcpp::Any JackRealVisitor::visitWhileStatement(JackParser::WhileStatementCon
   
   VLOG(6) << "---- Parsing While Statement ----"; 
  
-  auto builder = getBuilder();
+  auto& builder = getBuilder();
   builder.SetInsertPoint(CondBB);
   JackParser::ExpressionContext* exp_ctx = ctx->expression();
   Value* whilecond_exp = this->visitExpression(exp_ctx).as<Value*>();
   assert(whilecond_exp && "Unable to parser while condition expression");
-  // We only support 1, 8, 32 bits for now.
+  
+  // Check if cond_expression is boolean
   Type* cond_exp_type = whilecond_exp->getType();
-  llvm::IntegerType* int_type;
-  if(cond_exp_type->isIntegerTy(1)) {
-    int_type = llvm::IntegerType::get(getContext(), 1);
-  } else if(cond_exp_type->isIntegerTy(8)) {
-    int_type = llvm::IntegerType::get(getContext(), 8);
-  } else if(cond_exp_type->isIntegerTy(32)) {
-    int_type = llvm::IntegerType::get(getContext(), 32);
-  } else {
-    assert(false && "cond_exp_type should be within 1, 8 or 32.");
-  }
-
-  // Convert condition to a bool by comparing non-equal to 0.
-  whilecond_exp = builder.CreateICmpNE(whilecond_exp, llvm::ConstantInt::get(int_type, 0, true), "whilecond");
+  assert(cond_exp_type->isIntegerTy(1) && "Condition expression has to be boolean");
 
   // Create blocks for the then and else cases.  Insert the 'then' block at the
   // end of the function.
@@ -159,7 +140,7 @@ antlrcpp::Any JackRealVisitor::visitReturnStatement(JackParser::ReturnStatementC
   VLOG(6) << "---- Parsing Return Statement ----"; 
   
   JackParser::ExpressionContext* exp_ctx = ctx->expression();
-  auto builder = getBuilder();
+  auto& builder = getBuilder();
   if(exp_ctx) {
     Value* return_exp = this->visitExpression(exp_ctx).as<Value*>();
     builder.CreateRet(return_exp);
@@ -185,7 +166,7 @@ antlrcpp::Any JackRealVisitor::visitLetStatement(JackParser::LetStatementContext
 
   llvm::Value* r_val = this->visitExpression(exp_ctxs.back()).as<llvm::Value*>();
   llvm::Value* var_addr = this->variableLookup(var_name);
-  auto builder = getBuilder();
+  auto& builder = getBuilder();
   if(exp_ctxs.size() == 2) {
     // VarName[exp] = exp
     // Use GEP Inst
@@ -218,7 +199,7 @@ antlrcpp::Any JackRealVisitor::visitCastStatement(JackParser::CastStatementConte
   
   VLOG(6) << "---- Parsing Cast Statement ----"; 
 
-  auto builder = getBuilder();
+  auto& builder = getBuilder();
   if(srcType->isIntegerTy() && dstType->isIntegerTy()) {
     llvm::Value* var_val = builder.CreateLoad(var_addr, "load_for_cast");
     llvm::Value* casted_val = builder.CreateIntCast(var_val, dstType, true, "basic_type_cast");
