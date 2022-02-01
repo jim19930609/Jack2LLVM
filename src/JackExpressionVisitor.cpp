@@ -1,3 +1,6 @@
+#include <unordered_map>
+#include <string>
+
 #include "JackRealVisitor.h"
 #include "llvm/IR/Type.h"
 #include "llvm/IR/Constants.h"
@@ -58,6 +61,7 @@ antlrcpp::Any JackRealVisitor::visitExpression(JackParser::ExpressionContext *ct
 antlrcpp::Any JackRealVisitor::visitTerm(JackParser::TermContext *ctx) {
   // All possible members
   antlr4::tree::TerminalNode* integer_constant_ctx = ctx->INTEGER();
+  antlr4::tree::TerminalNode* char_constant_ctx = ctx->CHAR();
   antlr4::tree::TerminalNode* string_constant_ctx = ctx->STRING();
   antlr4::tree::TerminalNode* keyword_constant_ctx = ctx->KEYWORD();
   std::vector<JackParser::VarNameContext*> var_name_ctxs = ctx->varName();
@@ -78,6 +82,25 @@ antlrcpp::Any JackRealVisitor::visitTerm(JackParser::TermContext *ctx) {
 
     return integer_val;
   }
+
+  // CharConstant
+  if(char_constant_ctx) {
+    antlr4::Token* char_tok = char_constant_ctx->getSymbol();
+    std::string char_str = char_tok->getText();
+
+    assert(char_str.size() == 3 && "Invalid Char");
+    char char_c = char_str[1];
+
+    int ascii_val = static_cast<int>(char_c);
+
+    llvm::IntegerType* type = llvm::IntegerType::get(getContext(), 8);
+    llvm::Value* return_val = llvm::ConstantInt::get(type, ascii_val);
+    
+    VLOG(6) << "Parsing Char Term : " << char_c;
+    
+    return return_val;
+  }
+
   // stringConstant
   if(string_constant_ctx) {
     antlr4::Token* string_tok = string_constant_ctx->getSymbol();

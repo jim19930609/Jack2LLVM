@@ -61,6 +61,7 @@ returnStatement : 'return' expression? ';';
 expression      : term (OP term)*;
 
 term            : INTEGER
+                | CHAR
                 | STRING
                 | KEYWORD
                 | varName
@@ -117,7 +118,8 @@ KEYWORD : 'true'
         ;
 
 INTEGER : [0-9]+;
-STRING  : '"' ~('\r'|'\n'|'"')* '"';
+STRING  : '"' ~('\r'|'\n'|'"'|'\'')* '"';
+CHAR    : '\'' ~('\r'|'\n'|'"'|'\'') '\'';
 ID      : [a-zA-Z_][a-zA-Z_0-9]*;
 
 /* -------------------------- */

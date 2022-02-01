@@ -519,7 +519,6 @@ antlrcpp::Any JackRealVisitor::visitType(JackParser::TypeContext *ctx) {
   llvm::Type* varType;
   if(array_type_ctx) {
     varType = this->visitArrayType(array_type_ctx).as<llvm::Type*>();
-
   } else {
     varType = getVarType(var_type, class_type_ctx);
     assert(varType && "Class variable type has to be either 'var_type' or 'class_type'");
@@ -540,7 +539,9 @@ antlrcpp::Any JackRealVisitor::visitArrayType(JackParser::ArrayTypeContext *ctx)
   llvm::Type* varType = getVarType(var_type, class_type_ctx);
   assert(varType && "Unrecognized array type");
   
-  return llvm::ArrayType::get(varType, length);
+  llvm::Type* return_type = llvm::ArrayType::get(varType, length);
+
+  return return_type;
 }
 
 antlrcpp::Any JackRealVisitor::visitClassName(JackParser::ClassNameContext *ctx) {
