@@ -9,8 +9,13 @@ antlrcpp::Any JackRealVisitor::visitExpression(JackParser::ExpressionContext *ct
   std::vector<antlr4::tree::TerminalNode*> op_list = ctx->OP();
   std::vector<JackParser::TermContext*> term_list = ctx->term();
 
-  VLOG(6) << "---- Parsing Expression ----";
+  JackParser::CastExpressionContext* cast_expression_ctx = ctx->castExpression();
+  if(cast_expression_ctx) {
+    return this->visitCastExpression(cast_expression_ctx);
+  }
 
+  VLOG(6) << "---- Parsing Expression ----";
+  
   assert(term_list.size() > 0 && "Expression contains zero terms");
   assert(term_list.size() == op_list.size() + 1 && "Expression number of terms mismatch number of ops");
 
@@ -161,11 +166,9 @@ antlrcpp::Any JackRealVisitor::visitTerm(JackParser::TermContext *ctx) {
     return member_val;
   }
 
-  assert(var_name_ctxs.size() == 1 && "Invalid number of VarNames found in Term");
-  JackParser::VarNameContext* var_name_ctx = var_name_ctxs[0];
-  
   // varName[expression]
-  if(var_name_ctx && expression_ctx) {
+  if(var_name_ctxs.size() == 1 && expression_ctx) {
+    JackParser::VarNameContext* var_name_ctx = var_name_ctxs[0];
     std::string var_name = this->visitVarName(var_name_ctx).as<std::string>();
     llvm::Value* var_addr = variableLookup(var_name);
     llvm::Value* index = this->visitExpression(expression_ctx).as<llvm::Value*>();
@@ -182,7 +185,8 @@ antlrcpp::Any JackRealVisitor::visitTerm(JackParser::TermContext *ctx) {
   }
   
   // varName
-  if(var_name_ctx) {
+  if(var_name_ctxs.size() == 1) {
+    JackParser::VarNameContext* var_name_ctx = var_name_ctxs[0];
     std::string var_name = this->visitVarName(var_name_ctx).as<std::string>();
     VLOG(6) << "Parsing VarName Term : " << var_name;
     llvm::Value* var_addr = variableLookup(var_name);
@@ -210,7 +214,7 @@ antlrcpp::Any JackRealVisitor::visitTerm(JackParser::TermContext *ctx) {
 
     VLOG(6) << "Parsed unaryOp Term: " << unary_op_text;
 
-    if(unary_op_text == "-") {
+    if(unary_op_text == "(-)") {
       llvm::Value* return_val = builder.CreateNeg(term_val, "neg");
       return return_val;
     } else if(unary_op_text == "~") {
@@ -221,6 +225,7 @@ antlrcpp::Any JackRealVisitor::visitTerm(JackParser::TermContext *ctx) {
     }
   }
 
+  
   assert(false && "Unrecognized Term");
 }
 
@@ -230,10 +235,14 @@ antlrcpp::Any JackRealVisitor::visitSubroutineCall(JackParser::SubroutineCallCon
     JackParser::ClassNameContext* class_name_ctx = ctx->className();
     JackParser::VarNameContext* var_name_ctx = ctx->varName();
 
+    VLOG(6) << "Parsing Subroutine Call";
+
     assert(subroutine_name_ctx && "No subroutine name specified");
     
     // Parse ExpressionList to create Args
     std::vector<llvm::Value*> Args = this->visitExpressionList(expressionlist_ctx).as<std::vector<llvm::Value*>>();
+
+    VLOG(6) << "Parsed Argument List";
 
     // Parse FunctionName to get Function
     std::string function_name = this->visitSubroutineName(subroutine_name_ctx).as<std::string>();
@@ -293,6 +302,20 @@ antlrcpp::Any JackRealVisitor::visitSubroutineCall(JackParser::SubroutineCallCon
       print_llvm_type(function_type);
 
       return builder.CreateCall(function_type, member_function, Args, "call");
+    } else {
+      // this.function call
+      std::string class_name = this->visitorHelper.current_class_name;
+      // Get class type
+      llvm::Module& module = getModule();
+      llvm::Type* class_type = module.getTypeByName(class_name);
+      function_name_mangled = this->visitorHelper.static_func_name_mapping[class_type][function_name];
+      
+      llvm::Function* F = module.getFunction(function_name_mangled);
+
+      VLOG(6) << "Detected Subroutine Call";
+      print_llvm_type(F->getType());
+
+      return builder.CreateCall(F, Args, "call");
     }
     
     return nullptr;    
@@ -305,4 +328,32 @@ antlrcpp::Any JackRealVisitor::visitExpressionList(JackParser::ExpressionListCon
     ret.emplace_back(this->visitExpression(expression_ctx).as<llvm::Value*>());
   }
   return ret;
+}
+
+antlrcpp::Any JackRealVisitor::visitCastExpression(JackParser::CastExpressionContext *ctx) {
+  auto& builder = getBuilder();
+  std::string var_name = this->visitVarName(ctx->varName()).as<std::string>();
+  llvm::Value* var_addr = this->variableLookup(var_name);
+  llvm::Value* var_val = builder.CreateLoad(var_addr, "load_for_cast");
+
+  llvm::Type* srcType = var_val->getType();
+  llvm::Type* dstType = this->visitType(ctx->type()).as<llvm::Type*>();
+  
+  VLOG(6) << "---- Parsing Cast Statement ----"; 
+
+  if(srcType->isIntegerTy()) {
+    llvm::Value* casted_val = builder.CreateIntCast(var_val, dstType, true, "basic_type_cast");
+    return casted_val;
+
+  } else if(srcType->isStructTy() || srcType->isArrayTy()) {
+    llvm::Value* casted_val = builder.CreatePointerBitCastOrAddrSpaceCast(var_val, dstType, "reinterprete_cast");
+    return casted_val;
+
+  } else {
+    assert(false && "Src and Dst of cast statement has to be both basic type or both ptr types, cannot do mix");
+  }
+  
+  VLOG(6) << "---- Finished Parsing Cast Statement ----"; 
+  
+  return nullptr;
 }

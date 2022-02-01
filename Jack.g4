@@ -39,10 +39,7 @@ statement       : letStatement
                 | whileStatement
                 | doStatement
                 | returnStatement
-                | castStatement
                 ;
-
-castStatement   : 'cast' varName type ';';
 
 letStatement    : 'let' varName ('[' expression ']')? '=' expression ';';
 
@@ -58,7 +55,11 @@ returnStatement : 'return' expression? ';';
 /* Expression Level Grammar */
 /* ------------------------ */
 
-expression      : term (OP term)*;
+expression      : term (OP term)*
+                | castExpression
+                ;
+
+castExpression  : 'cast' varName type ';';
 
 term            : INTEGER
                 | CHAR
@@ -107,7 +108,7 @@ OP      : '+'
         | '='
         ;
 
-UNARYOP : '-'
+UNARYOP : '(-)'
         | '~'
         ;
 

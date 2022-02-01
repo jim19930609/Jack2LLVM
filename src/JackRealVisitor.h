@@ -43,10 +43,10 @@ public:
   virtual antlrcpp::Any visitWhileStatement(JackParser::WhileStatementContext *ctx) override;
   virtual antlrcpp::Any visitDoStatement(JackParser::DoStatementContext *ctx) override;
   virtual antlrcpp::Any visitReturnStatement(JackParser::ReturnStatementContext *ctx) override;
-  virtual antlrcpp::Any visitCastStatement(JackParser::CastStatementContext *ctx) override;
 
   // Expression Level
   virtual antlrcpp::Any visitExpression(JackParser::ExpressionContext *ctx) override;
+  virtual antlrcpp::Any visitCastExpression(JackParser::CastExpressionContext *ctx) override;
   virtual antlrcpp::Any visitTerm(JackParser::TermContext *ctx) override;
   virtual antlrcpp::Any visitSubroutineCall(JackParser::SubroutineCallContext *ctx) override;
   virtual antlrcpp::Any visitExpressionList(JackParser::ExpressionListContext *ctx) override;
