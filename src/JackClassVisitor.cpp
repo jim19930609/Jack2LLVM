@@ -24,6 +24,7 @@ antlrcpp::Any JackRealVisitor::visitClassDec(JackParser::ClassDecContext *ctx) {
   std::unordered_map<std::string, std::string> func_name_mapping;
   std::unordered_map<std::string, std::string> static_func_name_mapping;
   std::vector<std::string> vtable_function_order;
+  this->visitorHelper.symtab_c.clear();
   if(class_name_ctxs.size() == 2) {
     VLOG(6) << "Handling Inheritance";
 
@@ -100,15 +101,14 @@ antlrcpp::Any JackRealVisitor::visitClassDec(JackParser::ClassDecContext *ctx) {
   // Field Vars //
   // ---------- //
   // register a struct type in llvm::Module
-  this->visitorHelper.symtab_c.clear();
   for(size_t i=0; i<field_class_vars.size(); i++) {
     std::string name = field_class_vars[i].first;
     llvm::Type*  type = field_class_vars[i].second;
     // Declare Struct in Module
+    size_t index = struct_members.size();
     struct_members.push_back(type);
     // Add to symbol table
     // Consider parent members
-    size_t index = struct_members.size() + i;
     this->visitorHelper.symtab_c[name] = index;
   }
 
@@ -238,7 +238,10 @@ antlrcpp::Any JackRealVisitor::visitSubroutineDec(JackParser::SubroutineDecConte
   // Default return type is void
   llvm::Type* return_type = llvm::Type::getVoidTy(getContext());
   JackParser::TypeContext* return_type_ctx = ctx->type();
-  if(return_type_ctx) {
+  if(subroutine_decorator_text == "constructor") {
+    // Reset Constructor's return type to 'ClassType'
+    return_type = this_type;    
+  } else if(return_type_ctx) {
     return_type = this->visitType(return_type_ctx).as<llvm::Type*>();
   }
   
@@ -283,6 +286,15 @@ antlrcpp::Any JackRealVisitor::visitSubroutineDec(JackParser::SubroutineDecConte
   // and then call visitSubroutineBody()
   JackParser::SubroutineBodyContext* subroutine_body_ctx= ctx->subroutineBody();
   this->visitSubroutineBody(subroutine_body_ctx);
+      
+  // Constructor must insert return type
+  if(subroutine_decorator_text == "constructor") {
+    auto& builder = getBuilder();
+    llvm::Value* this_addr = variableLookup("this");
+    
+    llvm::Value* this_val = builder.CreateLoad(this_addr, "load_this");
+    builder.CreateRet(this_val);
+  }
   
   VLOG(6) << "------ Finished Parsing SubroutineDec ------";
 
@@ -347,17 +359,16 @@ antlrcpp::Any JackRealVisitor::visitSubroutineBody(JackParser::SubroutineBodyCon
   
   VLOG(6) << "Finished Updating Symbol Table Local";
 
-  // -------------------------- //
-  // Init and Contruct symtab_a //
-  // -------------------------- //
+  // ----------------------------------------- //
+  // Init and Contruct symtab_l from Arguments //
+  // ----------------------------------------- //
   // 2. Constructor only: allocate for self
   //    Construct virtual table
-  this->visitorHelper.symtab_a.clear();
   if(this->visitorHelper.function_decorator == "constructor") {
     std::string class_name = this->visitorHelper.current_class_name;
     llvm::Type* this_type = getModule().getTypeByName(class_name);
     llvm::AllocaInst* this_addr = builder.CreateAlloca(this_type, 0, "this");
-    this->visitorHelper.symtab_a["this"] = this_addr;
+    this->visitorHelper.symtab_l["this"] = this_addr;
     
     VLOG(6) << "Handled Constructor \"this\" Argument";
 
@@ -393,14 +404,19 @@ antlrcpp::Any JackRealVisitor::visitSubroutineBody(JackParser::SubroutineBodyCon
     VLOG(6) << "Finished Constructing Vtable as Class Member";
   }
 
-  // Setup symtab_a
+  // Construct local variables according to arguments
+  // Then copy arguments value to local var
   // 'this' is added to front of arguments during call/constructor
   for (auto& Arg : F->args()) {
     std::string name = Arg.getName().str();
-    this->visitorHelper.symtab_a[name] = &Arg;
+    llvm::Type* arg_type = Arg.getType();
+    
+    llvm::AllocaInst* local_addr = builder.CreateAlloca(arg_type, 0, name);
+    builder.CreateStore(&Arg, local_addr);
+    this->visitorHelper.symtab_l[name] = local_addr;
       
     VLOG(6) << "Arg Symbol : " << name;
-    print_llvm_type(Arg.getType());
+    print_llvm_type(arg_type);
     VLOG(6) << "";
   }
 
@@ -571,25 +587,23 @@ antlrcpp::Any JackRealVisitor::visitSubroutineName(JackParser::SubroutineNameCon
 }
 
 
-llvm::Value* JackRealVisitor::variableLookup(std::string name) {
+llvm::Value* JackRealVisitor::variableLookup(std::string name, SYM_TYPE* type) {
   auto& builder = getBuilder();
-
-  // lookup symtab_a
-  if(this->visitorHelper.symtab_a.count(name)) {
-    return this->visitorHelper.symtab_a[name];
-  }
 
   // lookup symtab_l
   if(this->visitorHelper.symtab_l.count(name)) {
+    if(type) {
+        *type = SYM_TYPE::LOCAL;
+    }
     return this->visitorHelper.symtab_l[name];
   }
   
-  // lookup symtab_c
+  // lookup self symtab_c
   if(this->visitorHelper.symtab_c.count(name)) {
     size_t index = this->visitorHelper.symtab_c[name];
     // Get 'this' and use GEP
-    assert(this->visitorHelper.symtab_a.count("this") && "Member variable used outside of method/constructor subroutines");
-    llvm::Value* this_addr = this->visitorHelper.symtab_a["this"];
+    assert(this->visitorHelper.symtab_l.count("this") && "Member variable used outside of method/constructor subroutines");
+    llvm::Value* this_addr = this->visitorHelper.symtab_l["this"];
     // Get value using GEP on this
     std::vector<llvm::Value*> indices(2);
     indices[0] = llvm::ConstantInt::get(getContext(), llvm::APInt(32, 0, true)); // Get the pointer itself
@@ -597,6 +611,9 @@ llvm::Value* JackRealVisitor::variableLookup(std::string name) {
     
     llvm::Value* member = builder.CreateGEP(this_addr, indices, "member");
 
+    if(type) {
+        *type = SYM_TYPE::CLASS_MEMBER;
+    }
     return member;
   }
     
@@ -607,6 +624,9 @@ llvm::Value* JackRealVisitor::variableLookup(std::string name) {
 
   std::string error_message = "Undefined symbol used: " + name_mangled;
   assert(getModule().getGlobalVariable(name_mangled) && error_message.c_str());
+  
+  if(type) {
+      *type = SYM_TYPE::GLOBAL;
+  }
   return getModule().getGlobalVariable(name_mangled);
-
 }

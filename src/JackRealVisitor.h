@@ -18,6 +18,12 @@ inline void print_llvm_type(llvm::Type* type) {
   VLOG(6) << rso.str();
 }
 
+enum SYM_TYPE {
+    LOCAL = 0,
+    CLASS_MEMBER = 1,
+    GLOBAL = 2,
+};
+
 /**
  * This class provides an empty implementation of JackVisitor, which can be
  * extended to create a visitor which only needs to handle a subset of the available methods.
@@ -67,7 +73,7 @@ public:
   llvm::Module& getModule() { return module_; }
   llvm::IRBuilder<>& getBuilder() { return builder_; }
 
-  llvm::Value* variableLookup(std::string name);
+  llvm::Value* variableLookup(std::string name, SYM_TYPE* type = nullptr);
   llvm::Type*  getVarType(antlr4::tree::TerminalNode* var_type, JackParser::ClassNameContext* class_type_ctx);
 
 private:
@@ -77,6 +83,21 @@ private:
   llvm::IRBuilder<> builder_;
 
   struct LoweringHints {
+    
+    llvm::BasicBlock* GetBlockBefore() {
+        if(block_before_stack_.size() > 0) {
+            return block_before_stack_.back();
+        }
+        return nullptr;
+    }
+
+    void PopBlockBefore(){
+        block_before_stack_.pop_back();
+    }
+
+    void SetBlockBefore(llvm::BasicBlock* BB) {
+        block_before_stack_.push_back(BB);
+    }
 
     // ------- //
     // Symtabs //
@@ -96,12 +117,10 @@ private:
     // -contain 'local' variables
     // -reset with SubroutineDec
     std::unordered_map<std::string, llvm::AllocaInst*> symtab_l;
-    
-    // local variables : symtab_a
-    // -contain 'argument' variables
-    // -reset with SubroutineDec
-    std::unordered_map<std::string, llvm::Value*> symtab_a;
 
+    // BlockBefore Stack
+    std::vector<llvm::BasicBlock*> block_before_stack_;
+    
     // [Global] Map class member name to index
     std::unordered_map<llvm::Type*, std::unordered_map<std::string, size_t>> class_member_name_to_index;
     

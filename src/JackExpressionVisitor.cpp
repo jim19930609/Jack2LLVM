@@ -188,6 +188,7 @@ antlrcpp::Any JackRealVisitor::visitTerm(JackParser::TermContext *ctx) {
   if(var_name_ctxs.size() == 1) {
     JackParser::VarNameContext* var_name_ctx = var_name_ctxs[0];
     std::string var_name = this->visitVarName(var_name_ctx).as<std::string>();
+    
     VLOG(6) << "Parsing VarName Term : " << var_name;
     llvm::Value* var_addr = variableLookup(var_name);
     llvm::Value* var_val = builder.CreateLoad(var_addr, "loadvalue");
@@ -224,7 +225,6 @@ antlrcpp::Any JackRealVisitor::visitTerm(JackParser::TermContext *ctx) {
       assert(false && "Unrecognized unary op");
     }
   }
-
   
   assert(false && "Unrecognized Term");
 }
@@ -260,8 +260,10 @@ antlrcpp::Any JackRealVisitor::visitSubroutineCall(JackParser::SubroutineCallCon
 
       VLOG(6) << "Detected Subroutine Call";
       print_llvm_type(F->getType());
+      
+      llvm::Value* call_val = builder.CreateCall(F, Args, "call");
 
-      return builder.CreateCall(F, Args, "call");
+      return call_val;
 
     } else if(var_name_ctx) {
       // "method": member function call
@@ -301,7 +303,9 @@ antlrcpp::Any JackRealVisitor::visitSubroutineCall(JackParser::SubroutineCallCon
       VLOG(6) << "Detected Subroutine Call";
       print_llvm_type(function_type);
 
-      return builder.CreateCall(function_type, member_function, Args, "call");
+      llvm::Value* call_val = builder.CreateCall(function_type, member_function, Args, "call");
+      return call_val;
+    
     } else {
       // this.function call
       std::string class_name = this->visitorHelper.current_class_name;
@@ -314,11 +318,12 @@ antlrcpp::Any JackRealVisitor::visitSubroutineCall(JackParser::SubroutineCallCon
 
       VLOG(6) << "Detected Subroutine Call";
       print_llvm_type(F->getType());
+      
+      llvm::Value* call_val = builder.CreateCall(F, Args, "call");
 
-      return builder.CreateCall(F, Args, "call");
+      return call_val;
     }
     
-    return nullptr;    
 }
 
 antlrcpp::Any JackRealVisitor::visitExpressionList(JackParser::ExpressionListContext *ctx) {

@@ -60,9 +60,10 @@ antlrcpp::Any JackRealVisitor::visitIfStatement(JackParser::IfStatementContext *
   
   // Create blocks for the then and else cases.  Insert the 'then' block at the
   // end of the function.
-  BasicBlock *ThenBB = BasicBlock::Create(getContext(), "then",    F);
-  BasicBlock *ElseBB = BasicBlock::Create(getContext(), "else",    F);
-  BasicBlock *MergeBB = BasicBlock::Create(getContext(), "ifcont", F);
+  BasicBlock* block_before = this->visitorHelper.GetBlockBefore();
+  BasicBlock *ThenBB = BasicBlock::Create(getContext(), "then",    F, block_before);
+  BasicBlock *ElseBB = BasicBlock::Create(getContext(), "else",    F, block_before);
+  BasicBlock *MergeBB = BasicBlock::Create(getContext(), "ifcont", F, block_before);
 
   builder.CreateCondBr(ifcond_exp, ThenBB, ElseBB);
 
@@ -72,14 +73,21 @@ antlrcpp::Any JackRealVisitor::visitIfStatement(JackParser::IfStatementContext *
   
   // Emit then value.
   builder.SetInsertPoint(ThenBB);
+  this->visitorHelper.SetBlockBefore(ElseBB);
   this->visitStatements(statements[0]);
+  
   builder.CreateBr(MergeBB);
+  this->visitorHelper.PopBlockBefore();
 
   // Emit else block.
   if(statements.size() == 2) {
     builder.SetInsertPoint(ElseBB);
+    this->visitorHelper.SetBlockBefore(MergeBB);
+
     this->visitStatements(statements[1]);
     builder.CreateBr(MergeBB);
+
+    this->visitorHelper.PopBlockBefore();
   }
 
   // Nothing to insert for merge block.
@@ -92,9 +100,10 @@ antlrcpp::Any JackRealVisitor::visitIfStatement(JackParser::IfStatementContext *
 
 antlrcpp::Any JackRealVisitor::visitWhileStatement(JackParser::WhileStatementContext *ctx) {
   Function* F = getModule().getFunction(this->visitorHelper.current_function_name);
-  BasicBlock *CondBB = BasicBlock::Create(getContext(), "whilecond", F);
-  BasicBlock *WhileBB = BasicBlock::Create(getContext(), "while",    F);
-  BasicBlock *NextBB = BasicBlock::Create(getContext(), "next", F);
+  BasicBlock* block_before = this->visitorHelper.GetBlockBefore();
+  BasicBlock *CondBB = BasicBlock::Create(getContext(), "whilecond", F, block_before);
+  BasicBlock *WhileBB = BasicBlock::Create(getContext(), "while",    F, block_before);
+  BasicBlock *NextBB = BasicBlock::Create(getContext(), "next", F, block_before);
   
   VLOG(6) << "---- Parsing While Statement ----"; 
  
@@ -115,8 +124,12 @@ antlrcpp::Any JackRealVisitor::visitWhileStatement(JackParser::WhileStatementCon
 
   // Emit while value.
   builder.SetInsertPoint(WhileBB);
+  this->visitorHelper.SetBlockBefore(NextBB);
+
   this->visitStatements(ctx->statements());
   builder.CreateBr(CondBB);
+  
+  this->visitorHelper.PopBlockBefore();
 
   // Emit next block.
   builder.SetInsertPoint(NextBB);
@@ -165,6 +178,7 @@ antlrcpp::Any JackRealVisitor::visitLetStatement(JackParser::LetStatementContext
   VLOG(6) << "---- Parsing Let Statement ----"; 
 
   llvm::Value* r_val = this->visitExpression(exp_ctxs.back()).as<llvm::Value*>();
+
   llvm::Value* var_addr = this->variableLookup(var_name);
   auto& builder = getBuilder();
   if(exp_ctxs.size() == 2) {
