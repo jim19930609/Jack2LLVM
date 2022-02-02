@@ -149,21 +149,39 @@ antlrcpp::Any JackRealVisitor::visitTerm(JackParser::TermContext *ctx) {
   if(var_name_ctxs.size() == 2) {
     std::string class_var_name = this->visitVarName(var_name_ctxs[0]).as<std::string>();
     std::string member_var_name = this->visitVarName(var_name_ctxs[1]).as<std::string>();
-
+   
     llvm::Value* class_var_addr = variableLookup(class_var_name);
-    llvm::Type* class_type = class_var_addr->getType();
+    llvm::Type* class_var_type = class_var_addr->getType();
+    assert(class_var_type->isPointerTy() && "symbol table lookup should return value with pointer type.");
 
-    size_t index = this->visitorHelper.class_member_name_to_index[class_type][member_var_name];
-    std::vector<llvm::Value*> indices(2);
-    indices[0] = llvm::ConstantInt::get(getContext(), llvm::APInt(32, 0, true)); // Get the pointer itself
-    indices[1] = llvm::ConstantInt::get(getContext(), llvm::APInt(32, index, true)); // Get indexed member
+    llvm::PointerType* class_var_poiner_type = llvm::cast<llvm::PointerType>(class_var_type);
+    llvm::Type* class_type = class_var_poiner_type->getElementType();
 
-    llvm::Value* member_addr = builder.CreateGEP(class_var_addr, indices, "class_member_addr");
-    
-    VLOG(6) << "Parsing VarName.VarName Term : " << class_var_name << "." << member_var_name;
-    
-    llvm::Value* member_val = builder.CreateLoad(member_addr, "loadvalue");
-    return member_val;
+    if(this->visitorHelper.class_member_name_to_index[class_type].count(member_var_name)) {
+        // Field Variable
+        size_t index = this->visitorHelper.class_member_name_to_index[class_type][member_var_name];
+        std::vector<llvm::Value*> indices(2);
+        indices[0] = llvm::ConstantInt::get(getContext(), llvm::APInt(32, 0, true)); // Get the pointer itself
+        indices[1] = llvm::ConstantInt::get(getContext(), llvm::APInt(32, index, true)); // Get indexed member
+
+        llvm::Value* member_addr = builder.CreateGEP(class_var_addr, indices, "class_member_addr");
+        
+        VLOG(6) << "Parsing VarName.VarName Term : " << class_var_name << "." << member_var_name;
+        
+        llvm::Value* member_val = builder.CreateLoad(member_addr, "loadvalue");
+        return member_val;
+    } else {
+        // Global Variable
+        assert(this->visitorHelper.class_globalvar_name_mapping[class_type].count(member_var_name) 
+                && "Unable to find class member");
+        std::string mangled_variable_name = this->visitorHelper.class_globalvar_name_mapping[class_type][member_var_name];
+        
+        llvm::Value* global_var_addr = getModule().getNamedValue(mangled_variable_name);
+        llvm::Value* global_var_val = builder.CreateLoad(global_var_addr, "loadvalue");
+        return global_var_val;
+    }
+
+    return nullptr;
   }
 
   // varName[expression]
