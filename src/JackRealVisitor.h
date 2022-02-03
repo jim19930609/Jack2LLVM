@@ -134,8 +134,11 @@ private:
     // example: Car.wheel -> Car_wheel
     std::unordered_map<llvm::Type*, std::unordered_map<std::string, std::string>> class_globalvar_name_mapping;
     
-    // [Global] demangled name
-    std::unordered_map<llvm::Type*, std::vector<std::string>> class_vtable_function_order;
+    // [Global] vtable function name mapping
+    std::unordered_map<llvm::Type*, std::unordered_map<std::string, size_t>> class_vtable_name_mapping;
+
+    // [Global] vtable address
+    std::unordered_map<llvm::Type*, llvm::Value*> class_vtable_address;
 
     std::string current_class_name;
     std::string current_function_name;

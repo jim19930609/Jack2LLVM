@@ -289,34 +289,35 @@ antlrcpp::Any JackRealVisitor::visitSubroutineCall(JackParser::SubroutineCallCon
 
       // Get class type
       llvm::Value* var_addr = variableLookup(var_name);
-      llvm::Value* var_value = builder.CreateLoad(var_addr, "loadvalue");
+      llvm::Type* class_var_type = var_addr->getType();
+      assert(class_var_type->isPointerTy() && "symbol table lookup should return value with pointer type.");
 
-      llvm::Type*  class_type = var_value->getType();
+      llvm::PointerType* class_var_poiner_type = llvm::cast<llvm::PointerType>(class_var_type);
+      llvm::Type* class_type = class_var_poiner_type->getElementType();
+
       assert(class_type->isStructTy() && "Variable is not callable");
 
       // Get Function from vtable
       // First locate vtable
       size_t vtable_index = class_type->getStructNumElements() - 1;
-      std::vector<std::string>& vtable_function_order = this->visitorHelper.class_vtable_function_order[class_type];
-      size_t function_index = std::find(vtable_function_order.begin(), vtable_function_order.begin(), function_name) - vtable_function_order.end();
+      size_t function_index = this->visitorHelper.class_vtable_name_mapping[class_type][function_name];
+      
+      std::vector<llvm::Value*> vtable_indices(2);
+      vtable_indices[0] = llvm::ConstantInt::get(getContext(), llvm::APInt(32, 0, true)); // Get the pointer itself
+      vtable_indices[1] = llvm::ConstantInt::get(getContext(), llvm::APInt(32, vtable_index, true));
+      // vtable addr
+      llvm::Value* vtable_addr = builder.CreateGEP(var_addr, vtable_indices, "vtable_addr");
 
-      // Index has 3 levels:
-      // 1. Pointer itself
-      // 2. Vtable addr in this_type
-      // 3. Function index in Vtable
-      std::vector<llvm::Value*> indices(3);
-      indices[0] = llvm::ConstantInt::get(getContext(), llvm::APInt(32, 0, true)); // Get the pointer itself
-      indices[1] = llvm::ConstantInt::get(getContext(), llvm::APInt(32, vtable_index, true));
-      indices[2] = llvm::ConstantInt::get(getContext(), llvm::APInt(32, function_index, true));
-      // This is the function pointer
-      llvm::Value* member_addr = builder.CreateGEP(var_value, indices, "function_addr_in_vtable");
-      llvm::Value* member_function = builder.CreateLoad(member_addr, "Load function ptr");
+      std::vector<llvm::Value*> func_indices(2);
+      func_indices[0] = llvm::ConstantInt::get(getContext(), llvm::APInt(32, 0, true)); // Get the pointer itself
+      func_indices[1] = llvm::ConstantInt::get(getContext(), llvm::APInt(32, function_index, true));
 
-      // Virtual functions should have the same function type
-      // We just grab it here
-      function_name_mangled = this->visitorHelper.class_func_name_mapping[class_type][function_name];
-      llvm::Module& module = getModule();
-      llvm::FunctionType* function_type = module.getFunction(function_name_mangled)->getFunctionType();
+      llvm::Value* func_addr = builder.CreateGEP(vtable_addr, func_indices, "func_addr");
+      llvm::Value* member_function = builder.CreateLoad(func_addr, "Load function ptr");
+
+      llvm::Type* type = member_function->getType();
+      assert(type->isFunctionTy() && "Value obtained from vtable not having FunctionType");
+      llvm::FunctionType* function_type = llvm::cast<llvm::FunctionType>(type);
       
       VLOG(6) << "Detected Subroutine Call";
       print_llvm_type(function_type);

@@ -12,6 +12,7 @@ antlrcpp::Any JackRealVisitor::visitClassDec(JackParser::ClassDecContext *ctx) {
   
   JackParser::ClassNameContext* class_name_ctx = class_name_ctxs[0];
   std::string class_name_text = this->visitClassName(class_name_ctx).as<std::string>();
+  this->visitorHelper.symtab_c.clear();
   
   VLOG(6) << "------ Visiting ClassDec : " << class_name_text << "  ------";
 
@@ -23,30 +24,23 @@ antlrcpp::Any JackRealVisitor::visitClassDec(JackParser::ClassDecContext *ctx) {
   std::unordered_map<std::string, std::string> globalvar_name_mapping;
   std::unordered_map<std::string, std::string> func_name_mapping;
   std::unordered_map<std::string, std::string> static_func_name_mapping;
-  std::vector<std::string> vtable_function_order;
-  this->visitorHelper.symtab_c.clear();
+  std::unordered_map<std::string, size_t> vtable_name_mapping;
   if(class_name_ctxs.size() == 2) {
     VLOG(6) << "Handling Inheritance";
 
     JackParser::ClassNameContext* parent_class_name_ctx = class_name_ctxs[1];
     std::string parent_class_name = this->visitClassName(parent_class_name_ctx).as<std::string>();
     
-    // Member variable
+    // Parent members
     llvm::StructType* parent_type = getModule().getTypeByName(parent_class_name);
-    for(size_t i=0; i<parent_type->getNumElements(); i++) {
-      llvm::Type* member_type = parent_type->getTypeAtIndex(i);
-      std::string member_name;
-      // kv.first: name
-      // kv.second: index
-      for(auto& kv : this->visitorHelper.class_member_name_to_index[parent_type]) {
-        if(kv.second == i) {
-          member_name = kv.first;
-          break;
-        }
-      }
+    struct_members.reserve(parent_type->getNumElements());
+    for(auto& kv : this->visitorHelper.class_member_name_to_index[parent_type]) {
+        std::string member_name = kv.first;
+        size_t member_index = kv.second;
+        llvm::Type* member_type = parent_type->getTypeAtIndex(member_index);
 
-      struct_members.push_back(member_type);
-      this->visitorHelper.symtab_c[member_name] = i;
+        struct_members[member_index] = member_type;
+        this->visitorHelper.symtab_c[member_name] = member_index;
     }
 
     VLOG(6) << "Handled Parent Members";
@@ -56,7 +50,7 @@ antlrcpp::Any JackRealVisitor::visitClassDec(JackParser::ClassDecContext *ctx) {
     globalvar_name_mapping = this->visitorHelper.class_globalvar_name_mapping[parent_type];
     func_name_mapping = this->visitorHelper.class_func_name_mapping[parent_type];
     static_func_name_mapping = this->visitorHelper.static_func_name_mapping[parent_type];
-    vtable_function_order = this->visitorHelper.class_vtable_function_order[parent_type];
+    vtable_name_mapping = this->visitorHelper.class_vtable_name_mapping[parent_type];
     
     VLOG(6) << "Handled Parent Methods";
   }
@@ -116,14 +110,22 @@ antlrcpp::Any JackRealVisitor::visitClassDec(JackParser::ClassDecContext *ctx) {
 
   // Insert virtual table to the end
   // Virtual table will be a struct containing pointer (i64 format) casted from Function*
-  size_t num_subroutines = ctx->subroutineDec().size();
-  llvm::ArrayType* vtable = llvm::ArrayType::get(llvm::Type::getInt64Ty(getContext()), num_subroutines);
-  this->visitorHelper.symtab_c["_vtable"] = struct_members.size();
-  struct_members.push_back(vtable);
+  std::string vtable_name_mangled = class_name_text + ".vtable";  
+  
+  size_t vtable_size = vtable_name_mapping.size(); // parent vtable size
+  vtable_size += ctx->subroutineDec().size(); // num of additional subroutines
+
+  // Construct dummy function type
+  llvm::ArrayType* vtable_type = llvm::ArrayType::get(llvm::Type::getInt64Ty(getContext()), vtable_size);
+  llvm::Constant* vtable_addr = getModule().getOrInsertGlobal(vtable_name_mangled, vtable_type);
+  
+  this->visitorHelper.symtab_c["_vtable_ptr"] = struct_members.size();
+  struct_members.push_back(vtable_type->getPointerElementType());
   
   llvm::StructType* registered_class_type = llvm::StructType::create(getContext(), struct_members, class_name_text, true);
   assert(registered_class_type && "Unable to create class StructType during ClassDec");
   
+  this->visitorHelper.class_vtable_address[registered_class_type] = vtable_addr;
   VLOG(6) << "Handled Virtual Table";
 
   // Copy symtab_c
@@ -157,7 +159,7 @@ antlrcpp::Any JackRealVisitor::visitClassDec(JackParser::ClassDecContext *ctx) {
   this->visitorHelper.class_globalvar_name_mapping[registered_class_type] = globalvar_name_mapping;
   this->visitorHelper.class_func_name_mapping[registered_class_type] = func_name_mapping;
   this->visitorHelper.static_func_name_mapping[registered_class_type] = static_func_name_mapping;
-  this->visitorHelper.class_vtable_function_order[registered_class_type] = vtable_function_order;
+  this->visitorHelper.class_vtable_address[registered_class_type] = vtable_addr;
 
   // ------------------- //
   // Parse SubroutineDec //
@@ -206,6 +208,8 @@ antlrcpp::Any JackRealVisitor::visitSubroutineDec(JackParser::SubroutineDecConte
   antlr4::Token* subroutine_decorator_tok = subroutine_decorator->getSymbol();
   std::string subroutine_decorator_text = subroutine_decorator_tok->getText();
   this->visitorHelper.function_decorator = subroutine_decorator_text; 
+  
+  auto& builder = getBuilder();
   
   // --------------- //
   // Subroutine Name //
@@ -259,7 +263,7 @@ antlrcpp::Any JackRealVisitor::visitSubroutineDec(JackParser::SubroutineDecConte
   std::vector<llvm::Type*> argument_type_list = argument_list.first;
   std::vector<std::string> argument_name_list = argument_list.second;
 
-  // Insert 'this' to first argument
+  // Insert 'this' to the first argument
   if(subroutine_decorator_text == "method") {
     argument_type_list.insert(argument_type_list.begin(), this_type);
     argument_name_list.insert(argument_name_list.begin(), "this");
@@ -268,6 +272,29 @@ antlrcpp::Any JackRealVisitor::visitSubroutineDec(JackParser::SubroutineDecConte
   // Create Function
   llvm::FunctionType *FT = llvm::FunctionType::get(return_type, argument_type_list, false);
   llvm::Function *F = llvm::Function::Create(FT, llvm::Function::ExternalLinkage, subroutine_name_mangled, getModule());
+
+  // ------------- //
+  // Update Vtable //
+  // ------------- //
+  llvm::Value* vtable_addr = this->visitorHelper.class_vtable_address[this_type];
+
+  std::unordered_map<std::string, size_t>& vtable_names_mapping = this->visitorHelper.class_vtable_name_mapping[this_type];
+  // Check whether we need to override parent function/method
+  size_t function_index = -1;
+  if(!vtable_names_mapping.count(subroutine_name)) {
+    function_index = vtable_names_mapping.size();
+    vtable_names_mapping[subroutine_name] = function_index;
+  } else {
+    function_index = vtable_names_mapping[subroutine_name];
+  }
+
+  // Get Function addr in vtable  
+  std::vector<llvm::Value*> vtable_indices(2);
+  vtable_indices[0] = llvm::ConstantInt::get(getContext(), llvm::APInt(32, 0, true)); // Get the pointer itself
+  vtable_indices[1] = llvm::ConstantInt::get(getContext(), llvm::APInt(32, function_index, true));
+
+  llvm::Value* vtable_func_addr = builder.CreateGEP(vtable_addr, vtable_indices, "function_addr_in_vtable");
+  builder.CreateStore(F, vtable_func_addr);
   
   // Set Argument names
   size_t Idx = 0;
@@ -289,7 +316,6 @@ antlrcpp::Any JackRealVisitor::visitSubroutineDec(JackParser::SubroutineDecConte
       
   // Constructor must insert return type
   if(subroutine_decorator_text == "constructor") {
-    auto& builder = getBuilder();
     llvm::Value* this_addr = variableLookup("this");
     
     llvm::Value* this_val = builder.CreateLoad(this_addr, "load_this");
@@ -369,37 +395,19 @@ antlrcpp::Any JackRealVisitor::visitSubroutineBody(JackParser::SubroutineBodyCon
     llvm::Type* this_type = getModule().getTypeByName(class_name);
     llvm::AllocaInst* this_addr = builder.CreateAlloca(this_type, 0, "this");
     this->visitorHelper.symtab_l["this"] = this_addr;
-    
+
     VLOG(6) << "Handled Constructor \"this\" Argument";
 
     // Now update vtable
-    size_t vtable_index = this->visitorHelper.symtab_c["_vtable"];
-    std::unordered_map<std::string, std::string>& func_name_mapping = this->visitorHelper.class_func_name_mapping[this_type];
-    std::vector<std::string>& vtable_functions = this->visitorHelper.class_vtable_function_order[this_type];
-    for(auto& kv : func_name_mapping) {
-      std::string name_demangled = kv.first;
-      // Overrided function, keep the same position as parent
-      if(std::find(vtable_functions.begin(), vtable_functions.end(), name_demangled) != vtable_functions.end()) continue;
-      vtable_functions.push_back(kv.first);
-    }
-
-    for(size_t function_index=0; function_index<vtable_functions.size(); function_index++) {
-      std::string function_name = vtable_functions[function_index];
-      std::string function_name_mangled = func_name_mapping[function_name];
-      llvm::Function* member_function = getModule().getFunction(function_name_mangled);
-      
-      // Index has 3 levels:
-      // 1. Pointer itself
-      // 2. Vtable addr in this_type
-      // 3. Function index in Vtable
-      std::vector<llvm::Value*> indices(3);
-      indices[0] = llvm::ConstantInt::get(getContext(), llvm::APInt(32, 0, true)); // Get the pointer itself
-      indices[1] = llvm::ConstantInt::get(getContext(), llvm::APInt(32, vtable_index, true));
-      indices[2] = llvm::ConstantInt::get(getContext(), llvm::APInt(32, function_index, true));
-
-      llvm::Value* vtable_back_addr = builder.CreateGEP(this_addr, indices, "function_addr_in_vtable");
-      builder.CreateStore(member_function, vtable_back_addr);
-    }
+    size_t vtable_index = this->visitorHelper.symtab_c["_vtable_ptr"];
+    // 1. Store vtable address to _vtable_ptr
+    llvm::Value* vtable_addr = this->visitorHelper.class_vtable_address[this_type];
+    std::vector<llvm::Value*> indices(2);
+    indices[0] = llvm::ConstantInt::get(getContext(), llvm::APInt(32, 0, true)); // Get the pointer itself
+    indices[1] = llvm::ConstantInt::get(getContext(), llvm::APInt(32, vtable_index, true));
+    
+    llvm::Value* vtable_ptr_addr = builder.CreateGEP(this_addr, indices, "vtable_ptr_addr");
+    builder.CreateStore(vtable_addr, vtable_ptr_addr);
 
     VLOG(6) << "Finished Constructing Vtable as Class Member";
   }
