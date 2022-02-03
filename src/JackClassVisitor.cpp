@@ -33,14 +33,19 @@ antlrcpp::Any JackRealVisitor::visitClassDec(JackParser::ClassDecContext *ctx) {
     
     // Parent members
     llvm::StructType* parent_type = getModule().getTypeByName(parent_class_name);
-    struct_members.reserve(parent_type->getNumElements());
+    struct_members.resize(parent_type->getNumElements() - 1); // Exclude _vtable_ptr
     for(auto& kv : this->visitorHelper.class_member_name_to_index[parent_type]) {
         std::string member_name = kv.first;
-        size_t member_index = kv.second;
+        if(member_name == "_vtable_ptr") continue;
+
+        int member_index = kv.second;
         llvm::Type* member_type = parent_type->getTypeAtIndex(member_index);
 
-        struct_members[member_index] = member_type;
-        this->visitorHelper.symtab_c[member_name] = member_index;
+        struct_members[member_index-1] = member_type; // erase vtable_ptr for now
+        this->visitorHelper.symtab_c[member_name] = member_index; // already considered vtable_ptr
+
+        VLOG(6) << "Inheriting Parent Member: " << member_name;
+        print_llvm_type(member_type);
     }
 
     VLOG(6) << "Handled Parent Members";
@@ -103,7 +108,9 @@ antlrcpp::Any JackRealVisitor::visitClassDec(JackParser::ClassDecContext *ctx) {
     struct_members.push_back(type);
     // Add to symbol table
     // Consider parent members
-    this->visitorHelper.symtab_c[name] = index;
+    this->visitorHelper.symtab_c[name] = index + 1; // reserve for vtable_ptr
+    VLOG(6) << "Inserted field variable: " << name;
+    print_llvm_type(type);
   }
 
   VLOG(6) << "Registered Class-level Field Vars";
@@ -111,7 +118,6 @@ antlrcpp::Any JackRealVisitor::visitClassDec(JackParser::ClassDecContext *ctx) {
   // Insert virtual table to the end
   // Virtual table will be a struct containing pointer (i64 format) casted from Function*
   std::string vtable_name_mangled = class_name_text + ".vtable";  
-  
   size_t vtable_size = vtable_name_mapping.size(); // parent vtable size
   vtable_size += ctx->subroutineDec().size(); // num of additional subroutines
 
@@ -119,14 +125,16 @@ antlrcpp::Any JackRealVisitor::visitClassDec(JackParser::ClassDecContext *ctx) {
   llvm::ArrayType* vtable_type = llvm::ArrayType::get(llvm::Type::getInt64Ty(getContext()), vtable_size);
   llvm::Constant* vtable_addr = getModule().getOrInsertGlobal(vtable_name_mangled, vtable_type);
   
-  this->visitorHelper.symtab_c["_vtable_ptr"] = struct_members.size();
-  struct_members.push_back(vtable_type->getPointerElementType());
+  this->visitorHelper.symtab_c["_vtable_ptr"] = 0;
+  llvm::Type* vtable_pointer_type = vtable_type->getPointerTo();
+  struct_members.insert(struct_members.begin(), vtable_pointer_type);
   
   llvm::StructType* registered_class_type = llvm::StructType::create(getContext(), struct_members, class_name_text, true);
   assert(registered_class_type && "Unable to create class StructType during ClassDec");
   
   this->visitorHelper.class_vtable_address[registered_class_type] = vtable_addr;
-  VLOG(6) << "Handled Virtual Table";
+  VLOG(6) << "Registered Class: " << class_name_text;
+  print_llvm_type(registered_class_type);
 
   // Copy symtab_c
   this->visitorHelper.class_member_name_to_index[registered_class_type] = this->visitorHelper.symtab_c;
@@ -166,7 +174,7 @@ antlrcpp::Any JackRealVisitor::visitClassDec(JackParser::ClassDecContext *ctx) {
   // ------------------- //
   // Delay constructor registration to the end
   // Because we need to update vtable at construction
-  JackParser::SubroutineDecContext* constructor_ctx = nullptr;
+  std::vector<JackParser::SubroutineDecContext*> constructor_ctxs;
   std::vector<JackParser::SubroutineDecContext*> subroutine_dec_ctxs = ctx->subroutineDec();
   for(JackParser::SubroutineDecContext* subroutine_dec_ctx : subroutine_dec_ctxs) {
     // Delay constructor code gen
@@ -174,7 +182,7 @@ antlrcpp::Any JackRealVisitor::visitClassDec(JackParser::ClassDecContext *ctx) {
     antlr4::Token* decorator_tok = decorator_ctx->getSymbol();
     std::string decorator = decorator_tok->getText();
     if(decorator == "constructor") {
-      constructor_ctx = subroutine_dec_ctx;
+      constructor_ctxs.emplace_back(std::move(subroutine_dec_ctx));
       continue;
     }
 
@@ -185,7 +193,7 @@ antlrcpp::Any JackRealVisitor::visitClassDec(JackParser::ClassDecContext *ctx) {
   }
 
   // Constructor codegen: update vtable
-  if(constructor_ctx) {
+  for(JackParser::SubroutineDecContext* constructor_ctx : constructor_ctxs) {
       this->visitSubroutineDec(constructor_ctx);
   }
 
@@ -209,8 +217,6 @@ antlrcpp::Any JackRealVisitor::visitSubroutineDec(JackParser::SubroutineDecConte
   std::string subroutine_decorator_text = subroutine_decorator_tok->getText();
   this->visitorHelper.function_decorator = subroutine_decorator_text; 
   
-  auto& builder = getBuilder();
-  
   // --------------- //
   // Subroutine Name //
   // --------------- //
@@ -222,13 +228,11 @@ antlrcpp::Any JackRealVisitor::visitSubroutineDec(JackParser::SubroutineDecConte
   // Add prefix to function name
   std::string class_name = this->visitorHelper.current_class_name;
   std::string subroutine_name_mangled = class_name + "." + subroutine_name;
-  if(subroutine_decorator_text == "method" || subroutine_decorator_text == "constructor") {
+  if(subroutine_decorator_text == "method") {
     // Update subroutine names mapping
     this->visitorHelper.class_func_name_mapping[this_type][subroutine_name] = subroutine_name_mangled;
   
-  } else if(subroutine_decorator_text == "function") {
-    if(this->visitorHelper.static_func_name_mapping[this_type].count(subroutine_name))
-      assert(false && "Cannot override static function through inheritance");
+  } else if(subroutine_decorator_text == "function" || subroutine_decorator_text == "constructor") {
     this->visitorHelper.static_func_name_mapping[this_type][subroutine_name] = subroutine_name_mangled;
 
   } else {
@@ -273,29 +277,6 @@ antlrcpp::Any JackRealVisitor::visitSubroutineDec(JackParser::SubroutineDecConte
   llvm::FunctionType *FT = llvm::FunctionType::get(return_type, argument_type_list, false);
   llvm::Function *F = llvm::Function::Create(FT, llvm::Function::ExternalLinkage, subroutine_name_mangled, getModule());
 
-  // ------------- //
-  // Update Vtable //
-  // ------------- //
-  llvm::Value* vtable_addr = this->visitorHelper.class_vtable_address[this_type];
-
-  std::unordered_map<std::string, size_t>& vtable_names_mapping = this->visitorHelper.class_vtable_name_mapping[this_type];
-  // Check whether we need to override parent function/method
-  size_t function_index = -1;
-  if(!vtable_names_mapping.count(subroutine_name)) {
-    function_index = vtable_names_mapping.size();
-    vtable_names_mapping[subroutine_name] = function_index;
-  } else {
-    function_index = vtable_names_mapping[subroutine_name];
-  }
-
-  // Get Function addr in vtable  
-  std::vector<llvm::Value*> vtable_indices(2);
-  vtable_indices[0] = llvm::ConstantInt::get(getContext(), llvm::APInt(32, 0, true)); // Get the pointer itself
-  vtable_indices[1] = llvm::ConstantInt::get(getContext(), llvm::APInt(32, function_index, true));
-
-  llvm::Value* vtable_func_addr = builder.CreateGEP(vtable_addr, vtable_indices, "function_addr_in_vtable");
-  builder.CreateStore(F, vtable_func_addr);
-  
   // Set Argument names
   size_t Idx = 0;
   for (auto &Arg : F->args()) {
@@ -314,14 +295,6 @@ antlrcpp::Any JackRealVisitor::visitSubroutineDec(JackParser::SubroutineDecConte
   JackParser::SubroutineBodyContext* subroutine_body_ctx= ctx->subroutineBody();
   this->visitSubroutineBody(subroutine_body_ctx);
       
-  // Constructor must insert return type
-  if(subroutine_decorator_text == "constructor") {
-    llvm::Value* this_addr = variableLookup("this");
-    
-    llvm::Value* this_val = builder.CreateLoad(this_addr, "load_this");
-    builder.CreateRet(this_val);
-  }
-  
   VLOG(6) << "------ Finished Parsing SubroutineDec ------";
 
   return nullptr;
@@ -408,6 +381,32 @@ antlrcpp::Any JackRealVisitor::visitSubroutineBody(JackParser::SubroutineBodyCon
     
     llvm::Value* vtable_ptr_addr = builder.CreateGEP(this_addr, indices, "vtable_ptr_addr");
     builder.CreateStore(vtable_addr, vtable_ptr_addr);
+    
+    // 2. Store function address to vtable
+    std::unordered_map<std::string, size_t>& vtable_names_mapping = this->visitorHelper.class_vtable_name_mapping[this_type];
+    std::unordered_map<std::string, std::string> func_name_mapping = this->visitorHelper.class_func_name_mapping[this_type];
+    for(const auto& iter : func_name_mapping) {
+        std::string subroutine_name = iter.first;
+        std::string subroutine_name_mangled = iter.second;
+        llvm::Function* F = getModule().getFunction(subroutine_name_mangled);
+
+        // Check whether we need to override parent function/method
+        size_t function_index = -1;
+        if(!vtable_names_mapping.count(subroutine_name)) {
+          function_index = vtable_names_mapping.size();
+          vtable_names_mapping[subroutine_name] = function_index;
+        } else {
+          function_index = vtable_names_mapping[subroutine_name];
+        }
+
+        // Get Function addr in vtable  
+        std::vector<llvm::Value*> vtable_indices(2);
+        vtable_indices[0] = llvm::ConstantInt::get(getContext(), llvm::APInt(32, 0, true)); // Get the pointer itself
+        vtable_indices[1] = llvm::ConstantInt::get(getContext(), llvm::APInt(32, function_index, true));
+
+        llvm::Value* vtable_func_addr = builder.CreateGEP(vtable_addr, vtable_indices, "function_addr_in_vtable");
+        builder.CreateStore(F, vtable_func_addr);
+    }
 
     VLOG(6) << "Finished Constructing Vtable as Class Member";
   }
@@ -433,6 +432,14 @@ antlrcpp::Any JackRealVisitor::visitSubroutineBody(JackParser::SubroutineBodyCon
   // 3. Call visitStatements()
   JackParser::StatementsContext* statements_ctx = ctx->statements();
   this->visitStatements(statements_ctx);
+  
+  // Constructor must insert return type
+  if(this->visitorHelper.function_decorator == "constructor") {
+    llvm::Value* this_addr = variableLookup("this");
+    
+    llvm::Value* this_val = builder.CreateLoad(this_addr, "load_this");
+    builder.CreateRet(this_val);
+  }
 
   VLOG(6) << "---- Finished Parsing SubroutineBody ----";
 

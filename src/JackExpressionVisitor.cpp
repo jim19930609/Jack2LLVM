@@ -250,9 +250,7 @@ antlrcpp::Any JackRealVisitor::visitTerm(JackParser::TermContext *ctx) {
 antlrcpp::Any JackRealVisitor::visitSubroutineCall(JackParser::SubroutineCallContext *ctx) {
     JackParser::ExpressionListContext* expressionlist_ctx = ctx->expressionList();
     JackParser::SubroutineNameContext* subroutine_name_ctx = ctx->subroutineName();
-    JackParser::ClassNameContext* class_name_ctx = ctx->className();
     JackParser::VarNameContext* var_name_ctx = ctx->varName();
-
     VLOG(6) << "Parsing Subroutine Call";
 
     assert(subroutine_name_ctx && "No subroutine name specified");
@@ -266,62 +264,57 @@ antlrcpp::Any JackRealVisitor::visitSubroutineCall(JackParser::SubroutineCallCon
     std::string function_name = this->visitSubroutineName(subroutine_name_ctx).as<std::string>();
     std::string function_name_mangled;
     auto& builder = getBuilder();
-    if(class_name_ctx) {
-      // "function": static function call
-      std::string class_name = this->visitClassName(class_name_ctx).as<std::string>();
-      // Get class type
-      llvm::Module& module = getModule();
-      llvm::Type* class_type = module.getTypeByName(class_name);
-      function_name_mangled = this->visitorHelper.static_func_name_mapping[class_type][function_name];
-      
-      llvm::Function* F = module.getFunction(function_name_mangled);
-
-      VLOG(6) << "Detected Subroutine Call";
-      print_llvm_type(F->getType());
-      
-      llvm::Value* call_val = builder.CreateCall(F, Args, "call");
-
-      return call_val;
-
-    } else if(var_name_ctx) {
-      // "method": member function call
+    if(var_name_ctx) {
       std::string var_name = this->visitVarName(var_name_ctx).as<std::string>();
+
+      if(llvm::Type* class_type = getModule().getTypeByName(var_name)) {
+          // Get class type
+          function_name_mangled = this->visitorHelper.static_func_name_mapping[class_type][function_name];
+          
+          llvm::Function* F = getModule().getFunction(function_name_mangled);
+          VLOG(6) << "Detected Subroutine Call";
+          print_llvm_type(F->getType());
+          
+          llvm::Value* call_val = builder.CreateCall(F, Args, "call");
+
+          return call_val;
+      }
 
       // Get class type
       llvm::Value* var_addr = variableLookup(var_name);
-      llvm::Type* class_var_type = var_addr->getType();
-      assert(class_var_type->isPointerTy() && "symbol table lookup should return value with pointer type.");
+      llvm::Value* var_val = builder.CreateLoad(var_addr, "load_for_method_call");
 
-      llvm::PointerType* class_var_poiner_type = llvm::cast<llvm::PointerType>(class_var_type);
-      llvm::Type* class_type = class_var_poiner_type->getElementType();
+      llvm::Type* class_type = var_val->getType();
 
       assert(class_type->isStructTy() && "Variable is not callable");
 
       // Get Function from vtable
       // First locate vtable
-      size_t vtable_index = class_type->getStructNumElements() - 1;
+      size_t vtable_index = this->visitorHelper.class_vtable_name_mapping[class_type]["_vtable_ptr"];
       size_t function_index = this->visitorHelper.class_vtable_name_mapping[class_type][function_name];
       
       std::vector<llvm::Value*> vtable_indices(2);
       vtable_indices[0] = llvm::ConstantInt::get(getContext(), llvm::APInt(32, 0, true)); // Get the pointer itself
       vtable_indices[1] = llvm::ConstantInt::get(getContext(), llvm::APInt(32, vtable_index, true));
       // vtable addr
-      llvm::Value* vtable_addr = builder.CreateGEP(var_addr, vtable_indices, "vtable_addr");
+      llvm::Value* vtable_addr_addr = builder.CreateGEP(var_addr, vtable_indices, "vtable_addr");
+      llvm::Value* vtable_addr_val = builder.CreateLoad(vtable_addr_addr, "load_vtable_addr");
 
       std::vector<llvm::Value*> func_indices(2);
       func_indices[0] = llvm::ConstantInt::get(getContext(), llvm::APInt(32, 0, true)); // Get the pointer itself
       func_indices[1] = llvm::ConstantInt::get(getContext(), llvm::APInt(32, function_index, true));
 
-      llvm::Value* func_addr = builder.CreateGEP(vtable_addr, func_indices, "func_addr");
-      llvm::Value* member_function = builder.CreateLoad(func_addr, "Load function ptr");
+      llvm::Value* func_addr = builder.CreateGEP(vtable_addr_val, func_indices, "func_addr");
+      llvm::Value* member_function = builder.CreateLoad(func_addr, "load_function_ptr");
 
-      llvm::Type* type = member_function->getType();
-      assert(type->isFunctionTy() && "Value obtained from vtable not having FunctionType");
-      llvm::FunctionType* function_type = llvm::cast<llvm::FunctionType>(type);
+      function_name_mangled = this->visitorHelper.class_func_name_mapping[class_type][function_name];
+      llvm::FunctionType* function_type = getModule().getFunction(function_name_mangled)->getFunctionType();
       
       VLOG(6) << "Detected Subroutine Call";
       print_llvm_type(function_type);
-
+      
+      // Insert var
+      Args.insert(Args.begin(), var_val);
       llvm::Value* call_val = builder.CreateCall(function_type, member_function, Args, "call");
       return call_val;
     
@@ -331,8 +324,15 @@ antlrcpp::Any JackRealVisitor::visitSubroutineCall(JackParser::SubroutineCallCon
       // Get class type
       llvm::Module& module = getModule();
       llvm::Type* class_type = module.getTypeByName(class_name);
-      function_name_mangled = this->visitorHelper.static_func_name_mapping[class_type][function_name];
-      
+      if(this->visitorHelper.static_func_name_mapping[class_type].count(function_name)) {
+        function_name_mangled = this->visitorHelper.static_func_name_mapping[class_type][function_name];
+
+      } else if (this->visitorHelper.class_func_name_mapping[class_type].count(function_name)) {
+        function_name_mangled = this->visitorHelper.class_func_name_mapping[class_type][function_name];
+
+      } else {
+        assert(false && "Cannot find function");
+      }
       llvm::Function* F = module.getFunction(function_name_mangled);
 
       VLOG(6) << "Detected Subroutine Call";

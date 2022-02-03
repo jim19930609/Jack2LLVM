@@ -47,7 +47,7 @@ ifStatement     : 'if' '(' expression ')' '{' statements '}' ('else' '{' stateme
 
 whileStatement  : 'while' '(' expression ')' '{' statements '}';
 
-doStatement     : 'do' subroutineCall;
+doStatement     : 'do' subroutineCall ';';
 
 returnStatement : 'return' expression? ';';
 
@@ -74,7 +74,7 @@ term            : INTEGER
                 ;
 
 subroutineCall  : subroutineName '(' expressionList ')'
-                | (className|varName)'.'subroutineName '(' expressionList ')'
+                | varName '.' subroutineName '(' expressionList ')'
                 ;
 
 expressionList  : (expression (',' expression)*)?;
