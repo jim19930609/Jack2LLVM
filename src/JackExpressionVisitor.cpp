@@ -166,7 +166,7 @@ antlrcpp::Any JackRealVisitor::visitTerm(JackParser::TermContext *ctx) {
 
         llvm::Value* member_addr = builder.CreateGEP(class_var_addr, indices, "class_member_addr");
         
-        VLOG(6) << "Parsing VarName.VarName Term : " << class_var_name << "." << member_var_name;
+        VLOG(6) << "Parsing VarName.VarName Term : " << class_var_name << "_" << member_var_name;
         
         llvm::Value* member_val = builder.CreateLoad(member_addr, "loadvalue");
         return member_val;

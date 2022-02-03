@@ -1,0 +1,14 @@
+class Main : Base {
+    field boolean g_;
+    
+    constructor void base() {
+        let g_ = false;
+    }
+
+    method void function0() {
+        var boolean is_good;
+
+        let g_ = true;
+        let is_good = g_;
+    }
+}

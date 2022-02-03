@@ -1,0 +1,20 @@
+class Main {
+    constructor void main() {
+    }
+    
+    function void call_base_method(Base b) {
+        var int x;
+        let x = b.function0();
+
+        return;
+    }
+    
+    function void test_call_base_method() {
+        var Derived d;
+        let d = Derived.derived();
+
+        do call_base_method(cast d Base);
+
+        return;
+    }
+}

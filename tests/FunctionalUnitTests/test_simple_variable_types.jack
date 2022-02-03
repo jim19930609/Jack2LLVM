@@ -1,0 +1,15 @@
+class Main {
+   function void main() {
+     var int i, sum;
+     var char character;
+     var boolean is_good;
+
+     let i = 5;
+     let sum = 10;
+     
+     let is_good = true;
+     let character = 's';
+
+     return;
+   }
+}

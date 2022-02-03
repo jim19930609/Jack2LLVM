@@ -1,0 +1,22 @@
+class Main {
+   function void main() {
+     var int[2] sum;
+     var char[3] character;
+     var boolean[2] is_good;
+     var int x;
+
+     let sum[0] = 1;
+     let sum[1] = 2;
+
+     let is_good[0] = true;
+     let is_good[1] = false;
+    
+     let character[0] = 'a';
+     let character[1] = 'b';
+     let character[2] = 'c';
+
+     let x = sum[0];
+
+     return;
+   }
+}

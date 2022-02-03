@@ -1,0 +1,13 @@
+class Derived : Base {
+    field boolean g_;
+    
+    constructor void derived() {
+        let g_ = false;
+    }
+
+    method int function0() {
+        let g_ = true;
+        return g_;
+    }
+    
+}

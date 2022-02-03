@@ -117,14 +117,16 @@ antlrcpp::Any JackRealVisitor::visitClassDec(JackParser::ClassDecContext *ctx) {
 
   // Insert virtual table to the end
   // Virtual table will be a struct containing pointer (i64 format) casted from Function*
-  std::string vtable_name_mangled = class_name_text + ".vtable";  
+  std::string vtable_name_mangled = class_name_text + "_vtable";  
   size_t vtable_size = vtable_name_mapping.size(); // parent vtable size
   vtable_size += ctx->subroutineDec().size(); // num of additional subroutines
 
   // Construct dummy function type
   llvm::ArrayType* vtable_type = llvm::ArrayType::get(llvm::Type::getInt64Ty(getContext()), vtable_size);
-  llvm::Constant* vtable_addr = getModule().getOrInsertGlobal(vtable_name_mangled, vtable_type);
+  llvm::Constant* init_val = llvm::Constant::getNullValue(vtable_type);
   
+  llvm::GlobalVariable* vtable_addr = new llvm::GlobalVariable(getModule(), vtable_type, true, llvm::GlobalValue::LinkageTypes::PrivateLinkage, init_val, vtable_name_mangled);
+
   this->visitorHelper.symtab_c["_vtable_ptr"] = 0;
   llvm::Type* vtable_pointer_type = vtable_type->getPointerTo();
   struct_members.insert(struct_members.begin(), vtable_pointer_type);
@@ -153,8 +155,10 @@ antlrcpp::Any JackRealVisitor::visitClassDec(JackParser::ClassDecContext *ctx) {
     
     // Apply special prefix to static member var
     // Then make it a global var
-    std::string global_name_mangled = class_name_text + "." + global_name;
-    llvm::Constant* declared_global_var = getModule().getOrInsertGlobal(global_name_mangled, global_type);
+    std::string global_name_mangled = class_name_text + "_" + global_name;
+    llvm::Constant* init_val = llvm::Constant::getNullValue(global_type);
+    llvm::GlobalVariable* declared_global_var = new llvm::GlobalVariable(getModule(), global_type, true, llvm::GlobalValue::LinkageTypes::PrivateLinkage, init_val, global_name_mangled);
+    
     assert(declared_global_var && "Unable to register static member as global variable");
   
     // Update global var names mapping
@@ -227,7 +231,7 @@ antlrcpp::Any JackRealVisitor::visitSubroutineDec(JackParser::SubroutineDecConte
   
   // Add prefix to function name
   std::string class_name = this->visitorHelper.current_class_name;
-  std::string subroutine_name_mangled = class_name + "." + subroutine_name;
+  std::string subroutine_name_mangled = class_name + "_" + subroutine_name;
   if(subroutine_decorator_text == "method") {
     // Update subroutine names mapping
     this->visitorHelper.class_func_name_mapping[this_type][subroutine_name] = subroutine_name_mangled;

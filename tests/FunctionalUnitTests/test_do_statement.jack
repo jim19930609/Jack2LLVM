@@ -1,0 +1,19 @@
+class Main {
+   
+   function int helper() {
+     var int x;
+     let x = 10;
+     
+     return x;
+   }
+
+   function void main() {
+     var int length;
+     var int sum;
+
+     let length = 1;
+     do helper();
+     
+     return;
+   }
+}

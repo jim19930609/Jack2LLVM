@@ -1,0 +1,17 @@
+class Main {
+   field int x_;
+   field boolean y_;
+   static int z_;
+
+   function void main(Main m) {
+     var int a;
+     var boolean b;
+     var int c;
+
+     let a = m.x_;
+     let b = m.y_;
+     let c = m.z_;
+
+     return;
+   }
+}

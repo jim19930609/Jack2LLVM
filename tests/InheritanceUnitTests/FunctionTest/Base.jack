@@ -1,0 +1,13 @@
+class Base {
+    field int x_;
+    
+    constructor void base() {
+        let x_ = 5;
+    }
+
+    function void function0() {
+        var int length;
+        let length = 7;
+        return;
+    }
+}

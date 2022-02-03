@@ -1,0 +1,44 @@
+class Main {
+   
+   function int helper() {
+     var int x;
+     let x = 10;
+     
+     return x;
+   }
+
+   function int main() {
+     var int length;
+     var int sum;
+     var int i;
+     var boolean is_good;
+     var int casted;
+     
+     let sum = 5;
+     let length = 1;
+
+     if(length > sum) {
+       let sum = 10;
+       do helper();
+     } else {
+        let i = 0;
+        while(i < sum) {
+            let i = i + 1;
+            let sum = sum - 1;
+        }
+     }
+
+     if(i > sum) {
+        let is_good = true;
+     }
+
+     while(i < sum) {
+        let i = i + 1;
+        let is_good = false;
+     }
+     
+     let casted = cast is_good int;
+     
+     return sum;
+   }
+}
