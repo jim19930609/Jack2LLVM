@@ -39,6 +39,7 @@ statement       : letStatement
                 | whileStatement
                 | doStatement
                 | returnStatement
+                | putsStatement
                 ;
 
 letStatement    : 'let' varName ('[' expression ']')? '=' expression ';';
@@ -50,6 +51,8 @@ whileStatement  : 'while' '(' expression ')' '{' statements '}';
 doStatement     : 'do' subroutineCall ';';
 
 returnStatement : 'return' expression? ';';
+
+putsStatement   : 'puts' '(' STRING ')' ';';
 
 /* ------------------------ */
 /* Expression Level Grammar */

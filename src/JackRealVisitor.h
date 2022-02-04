@@ -49,6 +49,7 @@ public:
   virtual antlrcpp::Any visitWhileStatement(JackParser::WhileStatementContext *ctx) override;
   virtual antlrcpp::Any visitDoStatement(JackParser::DoStatementContext *ctx) override;
   virtual antlrcpp::Any visitReturnStatement(JackParser::ReturnStatementContext *ctx) override;
+  virtual antlrcpp::Any visitPutsStatement(JackParser::PutsStatementContext *ctx) override;
 
   // Expression Level
   virtual antlrcpp::Any visitExpression(JackParser::ExpressionContext *ctx) override;
@@ -66,6 +67,7 @@ public:
   
   // Constructor
   JackRealVisitor() : module_("Yet Another Module", context_), builder_(context_){
+      declareSystemFunctions();
   }
 
   // Member Access
@@ -75,6 +77,10 @@ public:
 
   llvm::Value* variableLookup(std::string name, SYM_TYPE* type = nullptr);
   llvm::Type*  getVarType(antlr4::tree::TerminalNode* var_type, JackParser::ClassNameContext* class_type_ctx);
+
+  void declareSystemFunctions() {
+    getModule().getOrInsertFunction("puts", llvm::FunctionType::get(llvm::IntegerType::getInt32Ty(getContext()), llvm::PointerType::get(llvm::Type::getInt8Ty(getContext()), 0), false));
+  }
 
 private:
   // LLVM Members

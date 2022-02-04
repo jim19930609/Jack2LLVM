@@ -13,8 +13,13 @@ class Main : Base {
         return is_good;
     }
     
-    function void main() {
+    function int main() {
+        var int sum;
+
+        let sum = 5;
+
         do Main.function0();
-        return;
+        
+        return sum;
     }
 }

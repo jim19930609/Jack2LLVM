@@ -1,5 +1,5 @@
 class Main {
-   function void main() {
+   function int[2] main() {
      var int[2] sum;
      var char[3] character;
      var boolean[2] is_good;
@@ -17,6 +17,6 @@ class Main {
 
      let x = sum[0];
 
-     return;
+     return sum;
    }
 }
