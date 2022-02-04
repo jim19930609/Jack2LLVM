@@ -1,5 +1,8 @@
 class Main {
-   
+   function void helper2() {
+     return;
+   }
+
    function int helper() {
      var int x;
      let x = 10;
@@ -13,7 +16,8 @@ class Main {
 
      let length = 1;
      do helper();
-     
+     do helper2();
+
      return;
    }
 }

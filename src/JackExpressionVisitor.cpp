@@ -275,7 +275,7 @@ antlrcpp::Any JackRealVisitor::visitSubroutineCall(JackParser::SubroutineCallCon
           VLOG(6) << "Detected Subroutine Call";
           print_llvm_type(F->getType());
           
-          llvm::Value* call_val = builder.CreateCall(F, Args, "call");
+          llvm::Value* call_val = builder.CreateCall(F, Args);
 
           return call_val;
       }
@@ -315,7 +315,7 @@ antlrcpp::Any JackRealVisitor::visitSubroutineCall(JackParser::SubroutineCallCon
       
       // Insert var
       Args.insert(Args.begin(), var_val);
-      llvm::Value* call_val = builder.CreateCall(function_type, member_function, Args, "call");
+      llvm::Value* call_val = builder.CreateCall(function_type, member_function, Args);
       return call_val;
     
     } else {
@@ -338,7 +338,7 @@ antlrcpp::Any JackRealVisitor::visitSubroutineCall(JackParser::SubroutineCallCon
       VLOG(6) << "Detected Subroutine Call";
       print_llvm_type(F->getType());
       
-      llvm::Value* call_val = builder.CreateCall(F, Args, "call");
+      llvm::Value* call_val = builder.CreateCall(F, Args);
 
       return call_val;
     }

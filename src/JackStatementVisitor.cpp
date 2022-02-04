@@ -223,7 +223,7 @@ antlrcpp::Any JackRealVisitor::visitPutsStatement(JackParser::PutsStatementConte
   
   llvm::Function* F = getModule().getFunction("puts");
   
-  builder.CreateCall(F, Args, "puts");
+  builder.CreateCall(F, Args);
 
   VLOG(6) << "Parsing Puts Statement with string : " << string;
 
