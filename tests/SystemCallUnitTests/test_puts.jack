@@ -1,6 +1,6 @@
 class Main {
    function void main() {
-     puts("XXXX");
+     do system.puts("XXXX");
      return;
    }
 }

@@ -260,10 +260,39 @@ antlrcpp::Any JackRealVisitor::visitSubroutineCall(JackParser::SubroutineCallCon
 
     VLOG(6) << "Parsed Argument List";
 
-    // Parse FunctionName to get Function
     std::string function_name = this->visitSubroutineName(subroutine_name_ctx).as<std::string>();
     std::string function_name_mangled;
     auto& builder = getBuilder();
+  
+    // System Call
+    if(function_name == "puts") {
+        assert(Args.size() == 1 && "puts only takes single argument of type i8*");
+        llvm::Value* string_val = Args[0];
+
+        llvm::Type* int8_ptr_type = llvm::PointerType::get(llvm::Type::getInt8Ty(getContext()), 0);
+        llvm::Value* int8_ptr_val = builder.CreateBitOrPointerCast(string_val, int8_ptr_type); // i8*
+
+        std::vector<llvm::Value*> PutsArgs = { int8_ptr_val };
+
+        llvm::Function* F = getModule().getFunction("puts");
+
+        llvm::Value* call_val = builder.CreateCall(F, PutsArgs);
+
+        return call_val;
+
+    } else if(function_name == "putchar") {
+        llvm::Function* F = getModule().getFunction("putchar");
+        llvm::Value* call_val = builder.CreateCall(F, Args);
+        return call_val;
+    
+    } else if(function_name == "getchar") {
+        assert(Args.size() == 0 && "getchar takes empty argument list");
+        llvm::Function* F = getModule().getFunction("getchar");
+        llvm::Value* call_val = builder.CreateCall(F, Args);
+        return call_val;
+    }
+    
+    // Parse FunctionName to get Function
     if(var_name_ctx) {
       std::string var_name = this->visitVarName(var_name_ctx).as<std::string>();
 

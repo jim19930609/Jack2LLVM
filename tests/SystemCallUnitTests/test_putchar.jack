@@ -1,0 +1,11 @@
+class Main {
+   function void main() {
+     var int length;
+     var int ascii_zero;
+
+     let ascii_zero = 48;
+     let length = 8 + ascii_zero;
+     do system.putchar(length);
+     return;
+   }
+}

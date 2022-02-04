@@ -38,12 +38,7 @@ antlrcpp::Any JackRealVisitor::visitStatement(JackParser::StatementContext *ctx)
   if(return_ctx) {
     this->visitReturnStatement(return_ctx);
   }
-
-  JackParser::PutsStatementContext* puts_ctx = ctx->putsStatement();
-  if(puts_ctx) {
-    this->visitPutsStatement(puts_ctx);
-  }
-
+  
   return nullptr;
 }
 
@@ -205,27 +200,6 @@ antlrcpp::Any JackRealVisitor::visitLetStatement(JackParser::LetStatementContext
   }
   
   VLOG(6) << "---- Finished Parsing Let Statement ----"; 
-
-  return nullptr;
-}
-
-antlrcpp::Any JackRealVisitor::visitPutsStatement(JackParser::PutsStatementContext *ctx) {
-  antlr4::tree::TerminalNode* string_constant_ctx = ctx->STRING();
-  antlr4::Token* string_tok = string_constant_ctx->getSymbol();
-  std::string string = string_tok->getText();
-  auto& builder = getBuilder();
-
-  llvm::Value* string_val = builder.CreateGlobalString(string); // [n x i8]*
-  llvm::Type* int8_ptr_type = llvm::PointerType::get(llvm::Type::getInt8Ty(getContext()), 0);
-  llvm::Value* int8_ptr_val = builder.CreateBitOrPointerCast(string_val, int8_ptr_type); // i8*
-
-  std::vector<llvm::Value*> Args = { int8_ptr_val };
-  
-  llvm::Function* F = getModule().getFunction("puts");
-  
-  builder.CreateCall(F, Args);
-
-  VLOG(6) << "Parsing Puts Statement with string : " << string;
 
   return nullptr;
 }

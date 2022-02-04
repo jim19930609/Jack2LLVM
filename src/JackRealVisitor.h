@@ -49,7 +49,6 @@ public:
   virtual antlrcpp::Any visitWhileStatement(JackParser::WhileStatementContext *ctx) override;
   virtual antlrcpp::Any visitDoStatement(JackParser::DoStatementContext *ctx) override;
   virtual antlrcpp::Any visitReturnStatement(JackParser::ReturnStatementContext *ctx) override;
-  virtual antlrcpp::Any visitPutsStatement(JackParser::PutsStatementContext *ctx) override;
 
   // Expression Level
   virtual antlrcpp::Any visitExpression(JackParser::ExpressionContext *ctx) override;
@@ -79,7 +78,15 @@ public:
   llvm::Type*  getVarType(antlr4::tree::TerminalNode* var_type, JackParser::ClassNameContext* class_type_ctx);
 
   void declareSystemFunctions() {
+    // i32 puts(i8*)
     getModule().getOrInsertFunction("puts", llvm::FunctionType::get(llvm::IntegerType::getInt32Ty(getContext()), llvm::PointerType::get(llvm::Type::getInt8Ty(getContext()), 0), false));
+    
+    // i32 putchar(int char)
+    getModule().getOrInsertFunction("putchar", llvm::FunctionType::get(llvm::IntegerType::getInt32Ty(getContext()), llvm::Type::getInt32Ty(getContext()), false));
+    
+    // i32 putchar()
+    getModule().getOrInsertFunction("getchar", llvm::FunctionType::get(llvm::IntegerType::getInt32Ty(getContext()), false));
+
   }
 
 private:
