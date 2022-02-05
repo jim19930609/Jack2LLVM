@@ -48,8 +48,10 @@ antlrcpp::Any JackRealVisitor::visitExpression(JackParser::ExpressionContext *ct
       LHS = builder.CreateICmpSGT(LHS, RHS, "gt");
     } else if(op_text == "<") {
       LHS = builder.CreateICmpSLT(LHS, RHS, "lt");
-    } else if(op_text == "=") {
+    } else if(op_text == "==") {
       LHS = builder.CreateICmpEQ(LHS, RHS, "eq");
+    } else if(op_text == "!=") {
+      LHS = builder.CreateICmpNE(LHS, RHS, "ne");
     } else {
       assert(false && "Unrecognized operation type");
     }
@@ -93,8 +95,19 @@ antlrcpp::Any JackRealVisitor::visitTerm(JackParser::TermContext *ctx) {
     antlr4::Token* char_tok = char_constant_ctx->getSymbol();
     std::string char_str = char_tok->getText();
 
-    assert(char_str.size() == 3 && "Invalid Char");
-    char char_c = char_str[1];
+    assert(char_str.size() > 2 && "Invalid Char");
+    char char_c;
+    if(char_str.size() == 3) {
+        char_c = char_str[1];
+    } else {
+        assert(char_str.size() == 4 && "Invalid Char");
+        assert(char_str[1] == '\\' && "Invalid Char");
+        if(char_str[2] == 'n') {
+            char_c = '\n';
+        } else {
+            assert(false && "Invalid Char");
+        }
+    }
 
     int ascii_val = static_cast<int>(char_c);
 
@@ -282,6 +295,12 @@ antlrcpp::Any JackRealVisitor::visitSubroutineCall(JackParser::SubroutineCallCon
 
     } else if(function_name == "putchar") {
         llvm::Function* F = getModule().getFunction("putchar");
+        llvm::Value* call_val = builder.CreateCall(F, Args);
+        return call_val;
+    
+    } else if(function_name == "rand") {
+        assert(Args.size() == 0 && "rand takes empty argument list");
+        llvm::Function* F = getModule().getFunction("rand");
         llvm::Value* call_val = builder.CreateCall(F, Args);
         return call_val;
     

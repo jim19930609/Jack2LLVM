@@ -59,7 +59,7 @@ expression      : term (OP term)*
                 | castExpression
                 ;
 
-castExpression  : 'cast' varName type ';';
+castExpression  : 'cast' varName type;
 
 term            : INTEGER
                 | CHAR
@@ -105,7 +105,8 @@ OP      : '+'
         | '|'
         | '<'
         | '>'
-        | '='
+        | '=='
+        | '!='
         ;
 
 UNARYOP : '(-)'
@@ -120,7 +121,7 @@ KEYWORD : 'true'
 
 INTEGER : [0-9]+;
 STRING  : '"' ~('\r'|'\n'|'"'|'\'')* '"';
-CHAR    : '\'' ~('\r'|'\n'|'"'|'\'') '\'';
+CHAR    : '\'' ~('\r'|'"'|'\'')* '\'';
 ID      : [a-zA-Z_][a-zA-Z_0-9]*;
 
 /* -------------------------- */

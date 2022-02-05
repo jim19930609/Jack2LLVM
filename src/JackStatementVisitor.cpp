@@ -54,7 +54,7 @@ antlrcpp::Any JackRealVisitor::visitIfStatement(JackParser::IfStatementContext *
   // Convert condition to a bool by comparing non-equal to 0.0.
   auto& builder = getBuilder();
   Type* ifcond_exp_type = ifcond_exp->getType();
-  
+
   // Check if cond_expression is boolean
   assert(ifcond_exp_type->isIntegerTy(1) && "Condition expression has to be boolean");
   
@@ -62,25 +62,35 @@ antlrcpp::Any JackRealVisitor::visitIfStatement(JackParser::IfStatementContext *
   // end of the function.
   BasicBlock* block_before = this->visitorHelper.GetBlockBefore();
   BasicBlock *ThenBB = BasicBlock::Create(getContext(), "then",    F, block_before);
-  BasicBlock *ElseBB = BasicBlock::Create(getContext(), "else",    F, block_before);
   BasicBlock *MergeBB = BasicBlock::Create(getContext(), "ifcont", F, block_before);
-
-  builder.CreateCondBr(ifcond_exp, ThenBB, ElseBB);
 
   std::vector<JackParser::StatementsContext*> statements = ctx->statements();
   assert(statements.size() > 0 && "Then and Else statements cannot be both empty");
   assert(statements.size() < 3 && "If Statement cannot have more than 2 statements");
   
+  bool has_else = (statements.size() == 2);
+  BasicBlock* ElseBB = nullptr;
+  if(has_else) {
+    ElseBB = BasicBlock::Create(getContext(), "else",    F, block_before);
+    builder.CreateCondBr(ifcond_exp, ThenBB, ElseBB);
+  } else {
+    builder.CreateCondBr(ifcond_exp, ThenBB, MergeBB);
+  }
+  
   // Emit then value.
   builder.SetInsertPoint(ThenBB);
-  this->visitorHelper.SetBlockBefore(ElseBB);
+  if(has_else) {
+    this->visitorHelper.SetBlockBefore(ElseBB);
+  } else {
+    this->visitorHelper.SetBlockBefore(MergeBB);
+  }
   this->visitStatements(statements[0]);
   
   builder.CreateBr(MergeBB);
   this->visitorHelper.PopBlockBefore();
 
   // Emit else block.
-  if(statements.size() == 2) {
+  if(has_else) {
     builder.SetInsertPoint(ElseBB);
     this->visitorHelper.SetBlockBefore(MergeBB);
 
@@ -108,6 +118,9 @@ antlrcpp::Any JackRealVisitor::visitWhileStatement(JackParser::WhileStatementCon
   VLOG(6) << "---- Parsing While Statement ----"; 
  
   auto& builder = getBuilder();
+  // Terminator
+  builder.CreateBr(CondBB);
+  
   builder.SetInsertPoint(CondBB);
   JackParser::ExpressionContext* exp_ctx = ctx->expression();
   Value* whilecond_exp = this->visitExpression(exp_ctx).as<Value*>();

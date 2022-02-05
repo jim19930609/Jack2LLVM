@@ -65,7 +65,7 @@ public:
   virtual antlrcpp::Any visitVarDec(JackParser::VarDecContext *ctx) override;
   
   // Constructor
-  JackRealVisitor() : module_("Yet Another Module", context_), builder_(context_){
+  JackRealVisitor() : module_("", context_), builder_(context_){
       declareSystemFunctions();
   }
 
@@ -87,6 +87,8 @@ public:
     // i32 putchar()
     getModule().getOrInsertFunction("getchar", llvm::FunctionType::get(llvm::IntegerType::getInt32Ty(getContext()), false));
 
+    // i32 rand()
+    getModule().getOrInsertFunction("rand", llvm::FunctionType::get(llvm::IntegerType::getInt32Ty(getContext()), false));
   }
 
 private:

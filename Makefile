@@ -34,7 +34,7 @@ runtime: build-dirs $(MAIN).cpp
 	
 	# main lib
 	$(CC) $(CCARGS) $(LLVMINCLUDE) $(MAIN).cpp  -o $(BUILD)/$(MAIN).o 
-	$(CC) $(LDARGS) $(LLVMLINK) $(BUILD)/$(MAIN).o $(BUILD)/$(GRAMMAR)ClassVisitor.o $(BUILD)/$(GRAMMAR)StatementVisitor.o $(BUILD)/$(GRAMMAR)ExpressionVisitor.o $(BUILD)/$(GRAMMAR)Lexer.o  $(BUILD)/$(GRAMMAR)Visitor.o $(BUILD)/$(GRAMMAR)Parser.o $(SRCS) -o $(BUILD)/$(MAIN).out
+	$(CC) $(LDARGS) $(LLVMLINK) $(BUILD)/$(MAIN).o $(BUILD)/$(GRAMMAR)ClassVisitor.o $(BUILD)/$(GRAMMAR)StatementVisitor.o $(BUILD)/$(GRAMMAR)ExpressionVisitor.o $(BUILD)/$(GRAMMAR)Lexer.o  $(BUILD)/$(GRAMMAR)Visitor.o $(BUILD)/$(GRAMMAR)Parser.o $(SRCS) -o $(BUILD)/jack2llvm
 
 language: lang-dirs $(GRAMMAR).g4
 	$(ANTLR) -Dlanguage=Cpp -o $(LANGSRC) $(GRAMMAR).g4 -no-listener -visitor
