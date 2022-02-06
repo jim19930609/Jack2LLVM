@@ -26,7 +26,7 @@ Jack是一门面向对象语言，其语言设计主体来自Nand2Tetris（https
 5. 通过gcc将game.o与test.cpp链接成可执行文件。
 
 ## 4. Parsing流程
-jack2llvm编译器前端的一些实现思路，希望调试编译器的朋友可以参考：
+jack2llvm编译器前端的一些实现思路，有兴趣调试编译器的朋友可供参考：
 
 首先是不含继承的Parsing流程：
 ![image](https://user-images.githubusercontent.com/22334008/152665099-0b98a07c-16ab-4409-b791-b34cb0c8cf75.png)
