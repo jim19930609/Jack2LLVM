@@ -8,5 +8,6 @@ class Base {
     method void function0() {
         var int length;
         let length = x_;
+        return;
     }
 }

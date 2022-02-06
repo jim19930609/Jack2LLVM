@@ -1,19 +1,22 @@
 class Main {
-    constructor void main() {
-    }
-    
     function void call_base_method(Base b) {
         var int x;
-        let x = b.function0();
+        do b.function0();
 
         return;
     }
     
-    function void test_call_base_method() {
+    function void main() {
         var Derived d;
-        let d = Derived.derived();
+        var Base b, casted_b;
 
-        do call_base_method(cast d Base);
+        let d = Derived.derived();
+        let casted_b = cast d Base;
+        
+        do call_base_method(casted_b);
+
+        let b = Base.base();
+        do call_base_method(b);
 
         return;
     }

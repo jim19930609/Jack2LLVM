@@ -125,7 +125,7 @@ antlrcpp::Any JackRealVisitor::visitClassDec(JackParser::ClassDecContext *ctx) {
   llvm::ArrayType* vtable_type = llvm::ArrayType::get(llvm::Type::getInt64Ty(getContext()), vtable_size);
   llvm::Constant* init_val = llvm::Constant::getNullValue(vtable_type);
   
-  llvm::GlobalVariable* vtable_addr = new llvm::GlobalVariable(getModule(), vtable_type, true, llvm::GlobalValue::LinkageTypes::PrivateLinkage, init_val, vtable_name_mangled);
+  llvm::GlobalVariable* vtable_addr = new llvm::GlobalVariable(getModule(), vtable_type, false, llvm::GlobalValue::LinkageTypes::PrivateLinkage, init_val, vtable_name_mangled);
 
   this->visitorHelper.symtab_c["_vtable_ptr"] = 0;
   llvm::Type* vtable_pointer_type = vtable_type->getPointerTo();
@@ -409,7 +409,11 @@ antlrcpp::Any JackRealVisitor::visitSubroutineBody(JackParser::SubroutineBodyCon
         vtable_indices[1] = llvm::ConstantInt::get(getContext(), llvm::APInt(32, function_index, true));
 
         llvm::Value* vtable_func_addr = builder.CreateGEP(vtable_addr, vtable_indices, "function_addr_in_vtable");
-        builder.CreateStore(F, vtable_func_addr);
+        
+        llvm::Type* int64_type = llvm::Type::getInt64Ty(getContext());
+        llvm::Value* function_int64_val = builder.CreateBitOrPointerCast(F, int64_type);
+
+        builder.CreateStore(function_int64_val, vtable_func_addr);
     }
 
     VLOG(6) << "Finished Constructing Vtable as Class Member";
