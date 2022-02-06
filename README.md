@@ -39,7 +39,9 @@ jack2llvm编译器前端的一些实现思路，希望调试编译器的朋友�
 
 <img src="https://user-images.githubusercontent.com/22334008/152664844-916f8a15-0e6f-4d2e-b0d0-0b18ab13b8ff.gif" width="400">
 
-除此以外，在"tests"文件夹下还有针对所有语言特性的单测，可以作为参考。不过目前这些单测只是检查Jack LLVMIR的正确性，如果想要在X86机器上运行这些单测，需要额外写一个test.cpp作为driver。详情可以参考“tests/Demo/MineSweeping/test.cpp”以及“tests/Demo/MineSweeping/Makefile”进行编译配置。
+除此以外，在"tests"文件夹下还有针对所有语言特性的单测。其中“tests/InheritanceUnitTests/ComplexCallMethodTest”包含了继承、多态等相对复杂一些的特性，同时也可以直接编译运行，可以作为参考。
+
+其余部分的单测只是检查Jack LLVMIR的正确性，如果想要在X86机器上运行这些单测，需要额外写一个test.cpp作为driver。详情可以参考“tests/InheritanceUnitTests/ComplexCallMethodTest/test.cpp”以及“tests/InheritanceUnitTests/ComplexCallMethodTest/Makefile”进行编译配置。
 
 # 编译安装
 目前我只测试了Linux（Ubuntu）环境。
@@ -49,7 +51,7 @@ git clone https://github.com/jim19930609/Jack2LLVM.git
 ```
 
 2. 安装Antlr Runtime
-Antlr官方居然不提供Linux预编译包，我们需要自己从源码编译。注意我们用的是4.9.3版的Antlr
+Antlr官方不提供Linux预编译包，我们需要自己从源码编译。注意我们用的是4.9.3版的Antlr
 ```
 cd Jack2LLVM/src/runtime_lib/
 mkdir source_code && cd source_code
