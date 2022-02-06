@@ -11,16 +11,66 @@ Jack是一门面向对象语言，其语言设计主体来自Nand2Tetris（https
 ![image](https://user-images.githubusercontent.com/22334008/152664632-80987b82-80ba-4bc4-8aba-5d87a10d450e.png)
 
 ## 2. 系统调用支持
-得益于LLVMIR良好的抽象，在ABI Compatible的基础上，我们其实可以复用C Library中的所有函数，包括C语言中封装好的系统调用函数。
+得益于LLVMIR良好的抽象，在ABI Compatible的基础上，我们可以复用C Library中的所有函数，包括C语言中封装好的系统函数。
 
 目前我们支持system.putchar(), system.puts(), system.getchar()，system.rand()。在Jack LLVMIR中我们只是按照对应的函数签名对这些系统函数进行了声明，在后期通过gcc的链接器，与C语言的函数库进行链接，从而完成对C语言相应系统函数的调用。
 
 ## 3. 编译流程图
 
+![image](https://user-images.githubusercontent.com/22334008/152664979-2e8df4d9-d4cb-4d6b-9566-dcffeac57625.png)
 
-## 4. 如何上手
-你可以通过Demo: “tests/Demo/MineSweeping”作为例子来调试Jack语言、编译器。这是一个非常简单的10x10扫雷游戏：
+1. game.jack中是用Jack语法写作的应用程序。
+2. 通过本项目实现的编译器前端jack2llvm，将game.jack转化为game.ll，此时已经是Jack LLVMIR。
+3. 通过LLVM工具llc将game.ll编译为game.o。llc是将LLVMIR接入对应Architecture（这里是X86）后端并按照对应文件类型（这里是obj）进行代码生成的工具。
+4. obj文件不能直接运行，因此我们需要写一些driver code。这里采用最简单的方式，写一个test.cpp，在里面调用game.jack的入口(Main_main()函数)。
+5. 通过gcc将game.o与test.cpp链接成可执行文件。
 
+## 4. Parsing流程
+jack2llvm编译器前端的一些实现思路，希望调试编译器的朋友可以参考：
 
+首先是不含继承的Parsing流程：
+![image](https://user-images.githubusercontent.com/22334008/152665099-0b98a07c-16ab-4409-b791-b34cb0c8cf75.png)
 
-## 后续开发计划
+对于继承来说，主要是处理虚函数和成员。含有继承的Parsing流程：
+![image](https://user-images.githubusercontent.com/22334008/152665111-bc36a64d-5be4-4ea3-92a7-152eeb92b0de.png)
+
+## 5. 如何上手
+你可以通过Demo: “tests/Demo/MineSweeping”作为例子来调试Jack语言或编译器。这是一个非常简单的10x10扫雷游戏：
+
+![屏幕录制2022-02-04 下午4 51 46](https://user-images.githubusercontent.com/22334008/152664844-916f8a15-0e6f-4d2e-b0d0-0b18ab13b8ff.gif)
+
+除此以外，在"tests"文件夹下还有针对所有语言特性的单测，可以作为参考。不过目前这些单测只是检查Jack LLVMIR的正确性，如果想要在X86机器上运行这些单测，需要额外写一个test.cpp作为driver。详情可以参考“tests/Demo/MineSweeping/test.cpp”以及“tests/Demo/MineSweeping/Makefile”进行编译配置。
+
+# 编译安装
+目前我只测试了Linux（Ubuntu）环境。
+1. 下载本项目
+```
+git clone https://github.com/jim19930609/Jack2LLVM.git
+```
+
+2. 安装Antlr Runtime
+Antlr官方居然不提供Linux预编译包，我们需要自己从源码编译。注意我们用的是4.9.3版的Antlr
+```
+cd Jack2LLVM/src/runtime_lib/
+mkdir source_code && cd source_code
+wget https://www.antlr.org/download/antlr4-cpp-runtime-4.9.3-source.zip && unzip antlr4-cpp-runtime-4.9.3-source.zip
+mkdir build && mkdir run && cd build
+cmake .. -DANTLR_JAR_LOCATION=../../antlr-4.9.3-complete.jar -DWITH_DEMO=True
+make
+DESTDIR=../run make install
+cp -r ../run/usr/local/include/antlr4-runtime ../../runtime-linux/
+cp -r ../run/usr/local/lib ../../runtime-linux/
+```
+
+3. 编译Jack2LLVM
+```
+cd ../../../../
+make
+```
+
+4. 编译并运行Demo
+```
+cd tests/Demo/MineSweeping/
+make
+./main
+```
