@@ -37,7 +37,7 @@ jack2llvm编译器前端的一些实现思路，希望调试编译器的朋友�
 ## 5. 如何上手
 你可以通过Demo: “tests/Demo/MineSweeping”作为例子来调试Jack语言或编译器。这是一个非常简单的10x10扫雷游戏：
 
-![屏幕录制2022-02-04 下午4 51 46](https://user-images.githubusercontent.com/22334008/152664844-916f8a15-0e6f-4d2e-b0d0-0b18ab13b8ff.gif)
+<img src="https://user-images.githubusercontent.com/22334008/152664844-916f8a15-0e6f-4d2e-b0d0-0b18ab13b8ff.gif" width="400">
 
 除此以外，在"tests"文件夹下还有针对所有语言特性的单测，可以作为参考。不过目前这些单测只是检查Jack LLVMIR的正确性，如果想要在X86机器上运行这些单测，需要额外写一个test.cpp作为driver。详情可以参考“tests/Demo/MineSweeping/test.cpp”以及“tests/Demo/MineSweeping/Makefile”进行编译配置。
 
