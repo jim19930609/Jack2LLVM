@@ -358,12 +358,15 @@ antlrcpp::Any JackRealVisitor::visitSubroutineCall(JackParser::SubroutineCallCon
       function_name_mangled = this->visitorHelper.class_func_name_mapping[class_type][function_name];
       llvm::FunctionType* function_type = getModule().getFunction(function_name_mangled)->getFunctionType();
       
+      llvm::PointerType* function_ptr_type = llvm::PointerType::get(function_type, 0);
+      llvm::Value* F = builder.CreateIntToPtr(member_function, function_ptr_type);
+
       VLOG(6) << "Detected Subroutine Call";
       print_llvm_type(function_type);
       
       // Insert var
       Args.insert(Args.begin(), var_val);
-      llvm::Value* call_val = builder.CreateCall(function_type, member_function, Args);
+      llvm::Value* call_val = builder.CreateCall(F, Args);
       return call_val;
     
     } else {
@@ -417,8 +420,18 @@ antlrcpp::Any JackRealVisitor::visitCastExpression(JackParser::CastExpressionCon
     llvm::Value* casted_val = builder.CreateIntCast(var_val, dstType, true, "basic_type_cast");
     return casted_val;
 
-  } else if(srcType->isStructTy() || srcType->isArrayTy()) {
+  } else if(srcType->isArrayTy()) {
     llvm::Value* casted_val = builder.CreatePointerBitCastOrAddrSpaceCast(var_val, dstType, "reinterprete_cast");
+    return casted_val;
+  
+  } else if(srcType->isStructTy()) {
+    llvm::AllocaInst* src_alloc_addr = builder.CreateAlloca(srcType);
+    builder.CreateStore(var_val, src_alloc_addr);
+    
+    llvm::PointerType* dst_ptr_type = dstType->getPointerTo();
+
+    llvm::Value* dst_alloc_addr = builder.CreatePointerCast(src_alloc_addr, dst_ptr_type);
+    llvm::Value* casted_val = builder.CreateLoad(dst_alloc_addr);
     return casted_val;
 
   } else {

@@ -1,0 +1,360 @@
+class Main {
+
+function int randomNumber() {
+   var int x;
+
+   let x = system.rand();
+   while(x > 9) {
+     let x = x / 10;
+   }
+   
+   return x;
+}
+
+function boolean isWin(int[100] Mask, int num_mines) {
+    var int i, sum;
+    let i = 0;
+    let sum = 0;
+    while(i < 100) {
+        let sum = sum + Mask[i];
+        let i = i + 1;
+    }
+
+    if(sum == num_mines) {
+        return true;
+    }
+
+    return false;
+}
+
+function int computeBoardPosition(int i, int j) {
+    var int result;
+    let result = j * 10 + i;
+
+    return result;
+}
+
+function int generateInitialPosition() {
+    var int i, j, result;
+
+    let i = randomNumber();
+    let j = randomNumber();
+    let result = computeBoardPosition(i, j);
+    return result;
+}
+
+function int getUpPosition(int i, int j) {
+    var int up;
+
+    let up = j + 1;
+    if(up < 10) {
+        return computeBoardPosition(i, up);
+    }
+
+    return (-)1;
+}
+
+function int getDownPosition(int i, int j) {
+    var int down;
+
+    let down = j - 1;
+    if(down > (-)1) {
+        return computeBoardPosition(i, down);
+    }
+    return (-)1;
+}
+
+function int getLeftPosition(int i, int j) {
+    var int left;
+
+    let left = i - 1;
+    if(left > (-)1) {
+        return computeBoardPosition(left, j);
+    }
+    return (-)1;
+}
+
+function int getRightPosition(int i, int j) {
+    var int right;
+    
+    let right = i + 1;
+    if(right < 10) {
+        return computeBoardPosition(right, j);
+    }
+
+    return (-)1;
+}
+
+function int getUpLeftPosition(int i, int j) {
+    var int ul_i, ul_j;
+    
+    let ul_i = i - 1;
+    let ul_j = j + 1;
+    if(ul_i > (-)1) {
+        if(ul_j < 10) {
+            return computeBoardPosition(ul_i, ul_j);
+        }
+    }
+    
+    return (-)1;
+}
+
+function int getUpRightPosition(int i, int j) {
+    var int ur_i, ur_j;
+
+    let ur_i = i + 1;
+    let ur_j = j + 1;
+    if(ur_i < 10) {
+        if(ur_j < 10) {
+            return computeBoardPosition(ur_i, ur_j);
+        }
+    }
+
+    return (-)1;
+}
+
+function int getDownLeftPosition(int i, int j) {
+    var int dl_i, dl_j;
+    
+    let dl_i = i - 1;
+    let dl_j = j - 1;
+    if(dl_i > (-)1) {
+        if(dl_j > (-)1) {
+            return computeBoardPosition(dl_i, dl_j);
+        }
+    }
+
+    return (-)1;
+}
+
+function int getDownRightPosition(int i, int j) {
+    var int dr_i, dr_j;
+
+    let dr_i = i + 1;
+    let dr_j = j - 1;
+    if(dr_i < 10) {
+        if(dr_j > (-)1) {
+            return computeBoardPosition(dr_i, dr_j);
+        }
+    }
+    
+    return (-)1;
+}
+
+function int[100] BFS(int[100] Board, int[100] Mask, int i, int j) {
+    var int curr;
+    var boolean skip;
+
+    let skip = false;
+    if(i > 9) {
+        let skip = true;
+    }
+    if(i < 0) {
+        let skip = true;
+    }
+    if(j > 9) {
+        let skip = true;
+    }
+    if(j < 0) {
+        let skip = true;
+    }
+    
+    if(skip == false) {
+        let curr = computeBoardPosition(i, j);
+        if(Mask[curr] == 0) {
+            let skip = true;
+        }
+        
+        if(Board[curr] != 0) {
+            let Mask[curr] = 0;
+            let skip = true;
+        }
+
+        if(skip == false) {
+            let Mask[curr] = 0;
+            let Mask = BFS(Board, Mask, i-1, j);
+            let Mask = BFS(Board, Mask, i, j+1);
+            let Mask = BFS(Board, Mask, i, j-1);
+            let Mask = BFS(Board, Mask, i, j+1);
+            let Mask = BFS(Board, Mask, i-1, j+1);
+            let Mask = BFS(Board, Mask, i-1, j-1);
+            let Mask = BFS(Board, Mask, i+1, j+1);
+            let Mask = BFS(Board, Mask, i+1, j-1); 
+        }
+    }
+    
+    return Mask;
+}
+
+function void main() {
+    var int[100] Board;
+    var int[100] Mask;
+    var int num_mines;
+    var int init_i, init_pos;
+    var int i, j, curr;
+    var int num_surrounding_mins,u,d,l,r,ul,ur,dl,dr;
+    var int game_status;
+    var int board_val;
+
+    var char X_char;
+    var char E_char;
+    let X_char = 'X';
+    let E_char = '\n';
+
+    let num_mines = 6;
+
+    let init_i = 0;
+    while(init_i < 100) {
+        let Board[init_i] = 0;
+        let Mask[init_i] = 1;
+        
+        let init_i = init_i + 1;
+    }
+
+    // Initialize Board
+    let i = 0;
+    while(i < num_mines) {
+        let init_pos = generateInitialPosition();
+        let Board[init_pos] = (-)1;
+        
+        let i = i + 1;
+    }
+    
+    // Update Board Status
+    let i = 0;
+    let j = 0;
+    while(i < 10) {
+        while(j < 10) {
+            let curr = computeBoardPosition(i, j);
+            let num_surrounding_mins = Board[curr];
+            
+            let u = getUpPosition(i, j);
+            if(u != (-)1) { // Is Valid pos
+                if(Board[u] == (-)1) { // Is Mine
+                   let num_surrounding_mins = num_surrounding_mins + 1; 
+                }
+            }
+            
+            let d = getDownPosition(i, j);
+            if(d != (-)1) {
+                if(Board[d] == (-)1) {
+                   let num_surrounding_mins = num_surrounding_mins + 1; 
+                }
+            }
+            
+            let l = getLeftPosition(i, j);
+            if(l != (-)1) {
+                if(Board[l] == (-)1) {
+                   let num_surrounding_mins = num_surrounding_mins + 1; 
+                }
+            }
+            
+            let r = getRightPosition(i, j);
+            if(r != (-)1) {
+                if(Board[r] == (-)1) {
+                   let num_surrounding_mins = num_surrounding_mins + 1;
+                }
+            }
+
+            let ul = getUpLeftPosition(i, j);
+            if(ul != (-)1) {
+                if(Board[ul] == (-)1) {
+                   let num_surrounding_mins = num_surrounding_mins + 1;
+                }
+            }
+
+            let ur = getUpRightPosition(i, j);
+            if(ur != (-)1) {
+                if(Board[ur] == (-)1) {
+                   let num_surrounding_mins = num_surrounding_mins + 1;
+                }
+            }
+            
+            let dl = getDownLeftPosition(i, j);
+            if(dl != (-)1) {
+                if(Board[dl] == (-)1) {
+                   let num_surrounding_mins = num_surrounding_mins + 1;
+                }
+            }
+
+            let dr = getDownRightPosition(i, j);
+            if(dr != (-)1) {
+                if(Board[dr] == (-)1) {
+                   let num_surrounding_mins = num_surrounding_mins + 1;
+                }
+            }
+
+            let Board[curr] = num_surrounding_mins;
+            
+            // Update loop inicator j
+            let j = j + 1;
+        }
+
+        // Reset j
+        let j = 0;
+        // Update loop inicator i
+        let i = i + 1;
+    }
+    
+    // Play
+    let game_status = 0; // 0: On-going Game
+    while(game_status == 0) {
+        // Show Board
+        let i = 0;
+        let j = 0;
+        while(i < 10) {
+            while(j < 10) {
+                let curr = computeBoardPosition(i, j);
+                let board_val = Board[curr];
+                if(Mask[curr] == 1) {
+                    // Masked
+                    do system.putchar(cast X_char int);
+                } else {
+                    let board_val = board_val + 48; // ascii zero
+                    do system.putchar(board_val);
+                }
+
+                let j = j + 1;
+            }
+            do system.putchar(cast E_char int);
+
+            let j = 0;
+            let i = i + 1;
+        }
+
+        // User Insert Position
+        let i = 0;
+        let j = 0;
+        do system.puts("Insert Value i: ");
+        let i = system.getchar() - 1;
+        do system.getchar(); // For Enter
+        
+        do system.puts("Insert Value j: ");
+        let j = system.getchar() - 1;
+        do system.getchar(); // For Enter
+    
+        let i = i - 48; // ascii zero
+        let j = j - 48; // ascii zero
+
+        // Update Mask
+        let curr = computeBoardPosition(i, j);
+        let Mask = BFS(Board, Mask, i, j);
+        if(Board[curr] == (-)1) {
+            let game_status = 2;
+        }
+
+        if(isWin(Mask, num_mines)) {
+            let game_status = 1;
+        }
+    }
+
+    if(game_status == 1) {
+        do system.puts("You Win");
+    } else {
+        do system.puts("You Lose");
+    }
+
+    return;
+}
+
+}

@@ -1,13 +1,9 @@
 class Base {
-    field int x_;
-    
     constructor void base() {
-        let x_ = 5;
     }
 
-    method int function0() {
-        var int length;
-        let length = x_;
-        return x_;
+    method void function0() {
+        do system.puts("Base Method");
+        return;
     }
 }

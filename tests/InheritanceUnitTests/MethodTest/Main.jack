@@ -1,7 +1,7 @@
 class Main : Base {
     field boolean g_;
     
-    constructor void base() {
+    constructor void main() {
         let g_ = false;
     }
 
@@ -10,5 +10,6 @@ class Main : Base {
 
         let g_ = true;
         let is_good = g_;
+        return;
     }
 }
