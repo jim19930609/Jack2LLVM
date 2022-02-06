@@ -50,7 +50,13 @@ jack2llvm编译器前端的一些实现思路，有兴趣调试编译器的朋�
 git clone https://github.com/jim19930609/Jack2LLVM.git
 ```
 
-2. 安装Antlr Runtime
+2. 安装llvm
+```
+sudo apt update
+sudo apt install llvm
+```
+
+3. 安装Antlr Runtime
 Antlr官方不提供Linux预编译包，我们需要自己从源码编译。注意我们用的是4.9.3版的Antlr
 ```
 cd Jack2LLVM/src/runtime_lib/
@@ -64,13 +70,13 @@ cp -r ../run/usr/local/include/antlr4-runtime ../../runtime-linux/
 cp -r ../run/usr/local/lib ../../runtime-linux/
 ```
 
-3. 编译Jack2LLVM
+4. 编译Jack2LLVM
 ```
 cd ../../../../
 make
 ```
 
-4. 编译并运行Demo
+5. 编译并运行Demo
 ```
 cd tests/Demo/MineSweeping/
 make
