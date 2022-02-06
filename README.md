@@ -44,7 +44,7 @@ jack2llvm编译器前端的一些实现思路，有兴趣调试编译器的朋�
 其余部分的单测只是检查Jack LLVMIR的正确性，如果想要在X86机器上运行这些单测，需要额外写一个test.cpp作为driver。详情可以参考“tests/InheritanceUnitTests/ComplexCallMethodTest/test.cpp”以及“tests/InheritanceUnitTests/ComplexCallMethodTest/Makefile”进行编译配置。
 
 # 编译安装
-目前我只测试了Linux（Ubuntu）环境。
+目前只在Linux（Ubuntu）环境下进行过测试。
 1. 下载本项目
 ```
 git clone https://github.com/jim19930609/Jack2LLVM.git
