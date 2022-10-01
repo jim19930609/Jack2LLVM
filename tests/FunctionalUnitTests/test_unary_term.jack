@@ -1,0 +1,13 @@
+class Main {
+   function void main() {
+     var int length;
+     var boolean sum;
+    
+     let length = (-)10;
+     let length = (-)length;
+     let sum = true;
+     let sum = ~ sum;
+     
+     return;
+   }
+}

@@ -1,0 +1,18 @@
+class Main {
+   function void main() {
+     var int length;
+     var int i, sum;
+
+     let i = 0;
+     let sum = 0;
+     let length = 2;
+     if (i < length) {
+        let sum = sum + length;
+        let i = i + 1;
+     } else {
+        let length = 10;
+     }
+     
+     return;
+   }
+}

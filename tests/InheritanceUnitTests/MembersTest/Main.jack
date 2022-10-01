@@ -1,0 +1,13 @@
+class Main : Base {
+    field int z_;
+    field boolean g_;
+
+   function void main(Main m) {
+     var int length;
+
+     let length = m.z_;
+     let length = m.x_;
+
+     return;
+   }
+}

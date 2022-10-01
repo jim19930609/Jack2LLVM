@@ -1,0 +1,23 @@
+class Main {
+    function void call_base_method(Base b) {
+        var int x;
+        do b.function0();
+
+        return;
+    }
+    
+    function void main() {
+        var Derived d;
+        var Base b, casted_b;
+
+        let d = Derived.derived();
+        let casted_b = cast d Base;
+        
+        do call_base_method(casted_b);
+
+        let b = Base.base();
+        do call_base_method(b);
+
+        return;
+    }
+}

@@ -1,0 +1,10 @@
+class Main {
+   function void main() {
+     var int input;
+
+     let input = system.getchar();
+     do system.putchar(input);
+
+     return;
+   }
+}

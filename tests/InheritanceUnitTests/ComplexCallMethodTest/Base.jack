@@ -1,0 +1,9 @@
+class Base {
+    constructor void base() {
+    }
+
+    method void function0() {
+        do system.puts("Base Method");
+        return;
+    }
+}

@@ -1,0 +1,19 @@
+class Main {
+   
+   function int main() {
+     var int length;
+     var int sum;
+     var int i;
+     
+     let sum = 5;
+     let length = 1;
+
+     while(length > sum) {
+       let sum = sum + 1;
+       while(length > i) {
+         let i = i + 5;
+       }
+     } 
+     return sum;
+   }
+}

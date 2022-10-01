@@ -1,0 +1,16 @@
+class Main {
+   function void main() {
+     var int length;
+     var boolean is_good;
+    
+     var boolean[10] sum;
+     var int[10] sum_t;
+
+     let is_good = 'g';
+     let length = cast is_good int;
+     
+     let sum_t = cast sum int[10];
+
+     return;
+   }
+}

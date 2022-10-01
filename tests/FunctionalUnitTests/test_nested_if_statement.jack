@@ -1,0 +1,32 @@
+class Main {
+   
+   function int helper() {
+     var int x;
+     let x = 10;
+     
+     return x;
+   }
+
+   function int main() {
+     var int length;
+     var int sum;
+     var int i;
+     
+     let sum = 5;
+     let length = 1;
+
+     if(length > sum) {
+       let sum = 10;
+     } else {
+        let i = 0;
+        if(i < sum) {
+            let i = i + 1;
+            let sum = sum - 1;
+        } else {
+            let sum = 2;
+        }
+     }
+     
+     return sum;
+   }
+}

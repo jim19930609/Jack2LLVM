@@ -1,0 +1,11 @@
+class Main {
+   function boolean main(int a, boolean b) {
+     var int length;
+
+     let length = a;
+     let a = cast b int;
+     let length = a + length;
+
+     return cast length boolean;
+   }
+}

@@ -1,0 +1,11 @@
+class Derived : Base {
+    
+    constructor void derived() {
+    }
+
+    method void function0() {
+        do system.puts("Derived Method");
+        return;
+    }
+    
+}

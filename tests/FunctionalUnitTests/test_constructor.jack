@@ -1,0 +1,7 @@
+class Main {
+   field int x;
+
+   constructor void Main() {
+       let x = 10;
+   }
+}

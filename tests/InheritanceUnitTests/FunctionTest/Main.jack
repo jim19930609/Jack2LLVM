@@ -1,0 +1,24 @@
+class Main : Base {
+    field boolean g_;
+    
+    constructor void base() {
+        let g_ = false;
+    }
+
+    function void function0() {
+        var boolean is_good;
+
+        let is_good = true;
+        return;
+    }
+    
+    function void call_function() {
+        do Main.function0();
+        return;
+    }
+    
+    method void method_call_function() {
+        do function0();
+        return;
+    }
+}

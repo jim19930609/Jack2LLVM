@@ -1,0 +1,12 @@
+class Main {
+   function void main() {
+     var int length;
+     var int i, sum;
+
+     let i = 0;
+     let sum = i + 2;
+     let length = sum + i + 10;
+     
+     return;
+   }
+}

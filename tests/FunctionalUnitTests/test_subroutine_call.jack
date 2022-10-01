@@ -1,0 +1,22 @@
+class Main {
+   function int helper(int x, boolean y) {
+     var int z;
+     
+     let z = cast y int;
+     let z = z + x;
+     
+     return z;
+   }
+
+   function int main() {
+     var int length,sum;
+     var boolean y;
+
+     let length = 5;
+     let y = true;
+
+     let sum = helper(length, y);
+     
+     return sum;
+   }
+}

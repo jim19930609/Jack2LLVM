@@ -1,0 +1,25 @@
+class Main : Base {
+    field boolean g_;
+    static int x;
+
+    constructor void base() {
+        let g_ = false;
+    }
+
+    function boolean function0() {
+        var boolean is_good;
+
+        let is_good = true;
+        return is_good;
+    }
+    
+    function int main() {
+        var int sum;
+
+        let sum = 5;
+
+        do Main.function0();
+        
+        return sum;
+    }
+}

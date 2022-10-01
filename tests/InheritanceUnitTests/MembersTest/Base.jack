@@ -1,0 +1,4 @@
+class Base {
+    field int x_;
+    field boolean y_;
+}

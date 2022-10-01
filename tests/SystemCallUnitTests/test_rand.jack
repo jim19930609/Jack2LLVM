@@ -1,0 +1,14 @@
+class Main {
+   function void main() {
+       var int x;
+       var int range;
+
+       let range = 2147483647 / 10;
+
+       let x = system.rand();
+       let x = x / range;
+        
+       do system.putchar(x + 48);
+       return;
+   }
+}
