@@ -38,8 +38,11 @@ jobs:
             brew install java
             brew install wget
             
-            wget https://github.com/jim19930609/Jack2LLVM/releases/download/llvm/llvm-10.0.0-m1.zip
-            tar -xf llvm-10.0.0-m1.zip && mv llvm-10.0.0-m1 third_party/
+            wget https://github.com/taichi-dev/taichi_assets/releases/download/llvm10/taichi-llvm-10.0.0-macos.zip
+            
+            mkdir -p third_party/llvm-10.0.0-m1
+            mv taichi-llvm-10.0.0-macos.zip third_party/llvm-10.0.0-m1
+            tar -xf taichi-llvm-10.0.0-macos.zip
             
             echo "!!!!!!!!!!!"
             echo `./third_party/llvm-10.0.0-m1/bin/llvm-config --ldflags --libs core`
