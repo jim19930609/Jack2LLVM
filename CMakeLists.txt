@@ -53,8 +53,6 @@ target_include_directories(language_lib
 execute_process(COMMAND ${LLVM_CONFIG_BINARY} --cflags OUTPUT_VARIABLE LLVM_INCLUDE_DIR OUTPUT_STRIP_TRAILING_WHITESPACE)
 separate_arguments(LLVM_INCLUDE_DIR UNIX_COMMAND ${LLVM_INCLUDE_DIR})
 
-message("LLVM_INCLUDE_DIR: ${LLVM_INCLUDE_DIR}")
-
 add_library(jack_lib OBJECT
     ${CMAKE_SOURCE_DIR}/src/JackExpressionVisitor.cpp
     ${CMAKE_SOURCE_DIR}/src/JackStatementVisitor.cpp
@@ -96,3 +94,8 @@ target_link_options(jack2llvm PUBLIC ${LLVM_LINK_OPTIONS})
 # Build test cases
 include(cmake/Test.cmake)
 add_subdirectory(tests)
+
+string(REPLACE " " "\n" JACK_TEST_CASES ${JACK_TEST_CASES})
+FILE(WRITE ${CMAKE_BINARY_DIR}/run_tests.sh
+    ${JACK_TEST_CASES}
+)
