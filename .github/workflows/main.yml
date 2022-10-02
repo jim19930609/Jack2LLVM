@@ -74,7 +74,7 @@ jobs:
             sudo apt-get install default-jre
             
             wget https://github.com/jim19930609/Jack2LLVM/releases/download/llvm/taichi-llvm-10.0.0-linux.zip
-            tar -xf taichi-llvm-10.0.0-linux.zip && mv taichi-llvm-10.0.0-linux third_party/
+            unzip taichi-llvm-10.0.0-linux.zip && mv taichi-llvm-10.0.0-linux third_party/
 
       - name: Build
         run: |
