@@ -35,7 +35,9 @@ jobs:
             
             wget https://github.com/jim19930609/Jack2LLVM/releases/download/llvm/llvm-10.0.0-m1.zip
             tar -xf llvm-10.0.0-m1.zip && mv llvm-10.0.0-m1 third_party/
-    
+            
+            git lfs fetch --all
+
       - name: Build
         run: |
             mkdir -p build
