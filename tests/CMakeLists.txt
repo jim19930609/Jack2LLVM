@@ -1,1 +1,2 @@
 add_subdirectory(InheritanceUnitTests)
+add_subdirectory(IntegrationTest)

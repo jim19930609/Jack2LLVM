@@ -50,4 +50,4 @@ jobs:
             cd build && cmake .. && make -j && cd ..
 
       - name: Test
-        run: ./build/tests/InheritanceUnitTests/ComplexCallMethodTest/complex_call_method_test
+        run: sh ./build/run_tests.sh

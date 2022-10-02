@@ -22,7 +22,9 @@ endif()
                        ${LLC_BINARY} jack.ll -filetype=obj -o ${CMAKE_CURRENT_BINARY_DIR}/jack.o
                        VERBATIM
                        DEPENDS jack2llvm)
-
+    
     add_executable(${ADD_TEST_NAME} ${ADD_TEST_DRIVER_FILE} ${CMAKE_CURRENT_BINARY_DIR}/jack.o)
+    
+    set(JACK_TEST_CASES "${CMAKE_CURRENT_BINARY_DIR}/${ADD_TEST_NAME} ${JACK_TEST_CASES}" CACHE INTERNAL "")
 
 endfunction()
