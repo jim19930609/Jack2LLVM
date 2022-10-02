@@ -53,6 +53,8 @@ target_include_directories(language_lib
 execute_process(COMMAND ${LLVM_CONFIG_BINARY} --cflags OUTPUT_VARIABLE LLVM_INCLUDE_DIR OUTPUT_STRIP_TRAILING_WHITESPACE)
 separate_arguments(LLVM_INCLUDE_DIR UNIX_COMMAND ${LLVM_INCLUDE_DIR})
 
+message("LLVM_INCLUDE_DIR: ${LLVM_INCLUDE_DIR}")
+
 add_library(jack_lib OBJECT
     ${CMAKE_SOURCE_DIR}/src/JackExpressionVisitor.cpp
     ${CMAKE_SOURCE_DIR}/src/JackStatementVisitor.cpp
@@ -71,8 +73,9 @@ target_include_directories(jack_lib
 ###############################
 # Compile compiler executable #
 ###############################
-execute_process(COMMAND ${LLVM_CONFIG_BINARY} --ldflags --libs core OUTPUT_VARIABLE LLVM_LINK_OPTIONS OUTPUT_STRIP_TRAILING_WHITESPACE)
+execute_process(COMMAND ${LLVM_CONFIG_BINARY} --ldflags --libs OUTPUT_VARIABLE LLVM_LINK_OPTIONS OUTPUT_STRIP_TRAILING_WHITESPACE)
 separate_arguments(LLVM_LINK_OPTIONS UNIX_COMMAND ${LLVM_LINK_OPTIONS})
+set(LLVM_LINK_OPTIONS ${LLVM_LINK_OPTIONS} -lcurses)
 
 add_executable(jack2llvm ${CMAKE_SOURCE_DIR}/src/main.cpp)
 
