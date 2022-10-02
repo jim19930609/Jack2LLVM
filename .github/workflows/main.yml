@@ -23,11 +23,16 @@ jobs:
     # Steps represent a sequence of tasks that will be executed as part of the job
     steps:
       # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
-      - uses: actions/checkout@v3
-
+      - name: Checkout Repo
+        uses: actions/checkout@v2
+        with:
+            lfs: true
+      
       # Runs a set of commands using the runners shell
       - name: Install Dependencies
         run: |
+            git lfs checkout
+
             /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
             brew install glog
             brew install java
@@ -35,8 +40,6 @@ jobs:
             
             wget https://github.com/jim19930609/Jack2LLVM/releases/download/llvm/llvm-10.0.0-m1.zip
             tar -xf llvm-10.0.0-m1.zip && mv llvm-10.0.0-m1 third_party/
-            
-            git lfs fetch --all
 
       - name: Build
         run: |
