@@ -16,21 +16,30 @@ on:
 # A workflow run is made up of one or more jobs that can run sequentially or in parallel
 jobs:
   # This workflow contains a single job called "build"
-  build:
+  build_and_test:
     # The type of runner that the job will run on
-    runs-on: ubuntu-latest
+    runs-on: macos-12
 
     # Steps represent a sequence of tasks that will be executed as part of the job
     steps:
       # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
       - uses: actions/checkout@v3
 
-      # Runs a single command using the runners shell
-      - name: Run a one-line script
-        run: echo Hello, world!
-
       # Runs a set of commands using the runners shell
-      - name: Run a multi-line script
+      - name: Install Dependencies
         run: |
-          echo Add other actions to build,
-          echo test, and deploy your project.
+            /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+            brew install glog
+            brew install java
+            brew install wget
+            
+            wget https://github.com/jim19930609/Jack2LLVM/releases/download/llvm/llvm-10.0.0-m1.zip
+            unzip llvm-10.0.0-m1.zip && mv llvm-10.0.0-m1 third_party/
+    
+      - name: Build
+        run: |
+            mkdir -p build
+            cd build && cmake .. && make -j && cd ..
+
+      - name: Test
+        run: ./build/tests/InheritanceUnitTests/ComplexCallMethodTest/complex_call_method_test
