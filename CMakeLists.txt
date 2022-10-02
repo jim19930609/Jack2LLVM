@@ -76,7 +76,6 @@ target_include_directories(jack_lib
 execute_process(COMMAND ${LLVM_CONFIG_BINARY} --ldflags --libs OUTPUT_VARIABLE LLVM_LINK_OPTIONS OUTPUT_STRIP_TRAILING_WHITESPACE)
 separate_arguments(LLVM_LINK_OPTIONS UNIX_COMMAND ${LLVM_LINK_OPTIONS})
 set(LLVM_LINK_OPTIONS ${LLVM_LINK_OPTIONS} -lcurses)
-message("LLVM_LINK_OPTIONS: ${LLVM_LINK_OPTIONS}")
 
 add_executable(jack2llvm ${CMAKE_SOURCE_DIR}/src/main.cpp)
 
