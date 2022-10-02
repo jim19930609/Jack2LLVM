@@ -68,9 +68,10 @@ jobs:
       - name: Install Dependencies
         run: |
             git lfs checkout
-
-            sudo apt-get install glog
-            sudo apt-get install java 
+            
+            sudo apt-get update
+            sudo apt-get install libgoogle-glog-dev
+            sudo apt-get install default-jre
             
             wget https://github.com/jim19930609/Jack2LLVM/releases/download/llvm/taichi-llvm-10.0.0-linux.zip
             tar -xf taichi-llvm-10.0.0-linux.zip && mv taichi-llvm-10.0.0-linux third_party/
