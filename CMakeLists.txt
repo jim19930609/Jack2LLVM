@@ -19,7 +19,7 @@ endif()
 set(LLVM_CONFIG_BINARY ${LLVM_DIR}/bin/llvm-config)
 
 find_package(Java REQUIRED)
-find_package(Glog REQUIRED)
+find_package(glog REQUIRED)
 
 # Prepare antlr lexer and parser source codes
 set(LANG_DIRECTORY ${CMAKE_SOURCE_DIR}/src/language_src)
