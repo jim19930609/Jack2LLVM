@@ -1,6 +1,6 @@
 # This is a basic workflow to help you get started with Actions
 
-name: CI
+name: CI/CD System
 
 # Controls when the workflow will run
 on:
@@ -16,7 +16,7 @@ on:
 # A workflow run is made up of one or more jobs that can run sequentially or in parallel
 jobs:
   # This workflow contains a single job called "build"
-  build_and_test:
+  Build & Test (MacOS):
     # The type of runner that the job will run on
     runs-on: macos-12
 
@@ -34,7 +34,7 @@ jobs:
             brew install wget
             
             wget https://github.com/jim19930609/Jack2LLVM/releases/download/llvm/llvm-10.0.0-m1.zip
-            unzip llvm-10.0.0-m1.zip && mv llvm-10.0.0-m1 third_party/
+            tar -xf llvm-10.0.0-m1.zip && mv llvm-10.0.0-m1 third_party/
     
       - name: Build
         run: |

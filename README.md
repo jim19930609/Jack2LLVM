@@ -68,7 +68,7 @@ sudo apt-get install java
 MacOS:
 ```
 wget https://github.com/jim19930609/Jack2LLVM/releases/download/llvm/llvm-10.0.0-m1.zip
-unzip llvm-10.0.0-m1.zip && mv llvm-10.0.0-m1 Jack2LLVM/third_party
+tar -xf llvm-10.0.0-m1.zip && mv llvm-10.0.0-m1 Jack2LLVM/third_party
 ```
 
 Linux:
@@ -77,7 +77,7 @@ wget https://github.com/jim19930609/Jack2LLVM/releases/download/llvm/taichi-llvm
 unzip taichi-llvm-10.0.0-linux.zip && mv taichi-llvm-10.0.0-linux Jack2LLVM/third_party
 ```
 
-4. 安装Antlr Runtime
+4. (Linux only) 安装Antlr Runtime
 Antlr官方不提供Linux预编译包，我们需要自己从源码编译。注意我们用的是4.9.3版的Antlr
 ```
 cd Jack2LLVM/src/runtime_lib/
