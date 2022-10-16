@@ -1,3 +1,5 @@
+#include Base.jack
+
 class Main : Base {
     field boolean g_;
     static int x;
