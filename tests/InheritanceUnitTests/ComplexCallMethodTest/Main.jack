@@ -1,3 +1,5 @@
+#include Derived.jack
+
 class Main {
     function void call_base_method(Base b) {
         var int x;
