@@ -10,11 +10,12 @@ function(ADD_TEST)
     string(REPLACE ";" " " JACK_FILES_DIR "${ADD_TEST_JACK_FILES}")
     separate_arguments(JACK_FILES_DIR UNIX_COMMAND "${JACK_FILES_DIR}")
     
-if(APPLE)
-    execute_process(COMMAND brew --prefix OUTPUT_VARIABLE BREW_BASE_DIR OUTPUT_STRIP_TRAILING_WHITESPACE)
-    set(LLC_BINARY ${BREW_BASE_DIR}/opt/llvm/bin/llc)
-else()
-endif()
+    if(APPLE)
+        set(LLC_BINARY ${CMAKE_SOURCE_DIR}/third_party/llvm-10.0.0-m1/bin/llc)
+    else()
+        set(LLC_BINARY ${CMAKE_SOURCE_DIR}/third_party/taichi-llvm-10.0.0-linux/bin/llc)
+    endif()
+
     add_custom_command(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/jack.o
                        COMMAND 
                        ${CMAKE_SOURCE_DIR}/build/jack2llvm ${JACK_FILES_DIR} > jack.ll
