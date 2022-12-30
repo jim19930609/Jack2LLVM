@@ -66,9 +66,9 @@ jobs:
             sudo apt install aptitude
             
             sudo aptitude update
-            sudo aptitude install libgflags-dev
-            sudo aptitude install libgoogle-glog-dev
-            sudo aptitude install default-jre
+            sudo aptitude install -y libgflags-dev
+            sudo aptitude install -y libgoogle-glog-dev
+            sudo aptitude install -y default-jre
 
             wget https://github.com/jim19930609/Jack2LLVM/releases/download/llvm/taichi-llvm-10.0.0-linux.zip
             unzip taichi-llvm-10.0.0-linux.zip && mv taichi-llvm-10.0.0-linux third_party/
