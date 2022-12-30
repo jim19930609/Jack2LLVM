@@ -38,16 +38,18 @@ jobs:
             brew install java
             brew install wget
             
-            wget https://github.com/jim19930609/Jack2LLVM/releases/download/llvm/llvm-10.0.0-m1.zip
-            tar -xf llvm-10.0.0-m1.zip && mv llvm-10.0.0-m1 third_party/
-
+            wget https://github.com/taichi-dev/taichi_assets/releases/download/llvm10/taichi-llvm-10.0.0-macos.zip
+            
+            mkdir -p third_party/llvm-10.0.0-m1
+            mv taichi-llvm-10.0.0-macos.zip third_party/llvm-10.0.0-m1
+            cd third_party/llvm-10.0.0-m1 && tar -xf taichi-llvm-10.0.0-macos.zip && cd ../..\
+            
       - name: Build
         run: |
             mkdir -p build
             cd build && cmake .. && make -j && cd ..
-
       - name: Test
-        run: ./build/tests/InheritanceUnitTests/ComplexCallMethodTest/complex_call_method_test
+        run: sh ./build/run_tests.sh
 
 
   Build_And_Test_Linux:
