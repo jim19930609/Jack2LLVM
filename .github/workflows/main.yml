@@ -42,7 +42,7 @@ jobs:
             
             mkdir -p third_party/llvm-10.0.0-m1
             mv taichi-llvm-10.0.0-macos.zip third_party/llvm-10.0.0-m1
-            cd third_party/llvm-10.0.0-m1 && tar -xf taichi-llvm-10.0.0-macos.zip && cd ../..\
+            cd third_party/llvm-10.0.0-m1 && tar -xf taichi-llvm-10.0.0-macos.zip && cd ../..
             
       - name: Build
         run: |
