@@ -25,13 +25,10 @@ jobs:
       # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
       - name: Checkout Repo
         uses: actions/checkout@v2
-        with:
-            lfs: true
       
       # Runs a set of commands using the runners shell
       - name: Install Dependencies
         run: |
-            git lfs checkout
 
             /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
             brew install glog
@@ -43,11 +40,45 @@ jobs:
             mkdir -p third_party/llvm-10.0.0-m1
             mv taichi-llvm-10.0.0-macos.zip third_party/llvm-10.0.0-m1
             cd third_party/llvm-10.0.0-m1 && tar -xf taichi-llvm-10.0.0-macos.zip && cd ../..
-
+            
       - name: Build
         run: |
             mkdir -p build
             cd build && cmake .. && make -j && cd ..
-
       - name: Test
         run: sh ./build/run_tests.sh
+
+
+  Build_And_Test_Linux:
+    # The type of runner that the job will run on
+    runs-on: ubuntu-22.04
+
+    # Steps represent a sequence of tasks that will be executed as part of the job
+    steps:
+      # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
+      - name: Checkout Repo
+        uses: actions/checkout@v2
+
+      # Runs a set of commands using the runners shell
+      - name: Install Dependencies
+        run: |
+            sudo apt update
+            sudo apt install aptitude
+            sudo apt install clang-11
+            
+            sudo aptitude update
+            sudo aptitude install -y libgflags-dev
+            sudo aptitude install -y libgoogle-glog-dev
+            sudo aptitude install -y default-jre
+
+            wget https://github.com/jim19930609/Jack2LLVM/releases/download/llvm/taichi-llvm-10.0.0-linux.zip
+            unzip taichi-llvm-10.0.0-linux.zip && mv taichi-llvm-10.0.0-linux third_party/
+            
+      - name: Build
+        run: |
+            mkdir -p build
+            cd build && cmake .. && make -j && cd ..
+        env:
+            CXX: clang++-11
+      - name: Test
+        run: ./build/tests/InheritanceUnitTests/ComplexCallMethodTest/complex_call_method_test
