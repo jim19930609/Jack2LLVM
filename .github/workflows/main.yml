@@ -38,11 +38,8 @@ jobs:
             brew install java
             brew install wget
             
-            wget https://github.com/taichi-dev/taichi_assets/releases/download/llvm10/taichi-llvm-10.0.0-macos.zip
-            
-            mkdir -p third_party/llvm-10.0.0-m1
-            mv taichi-llvm-10.0.0-macos.zip third_party/llvm-10.0.0-m1
-            cd third_party/llvm-10.0.0-m1 && tar -xf taichi-llvm-10.0.0-macos.zip && cd ../..
+            wget https://github.com/jim19930609/Jack2LLVM/releases/download/llvm/llvm-10.0.0-m1.zip
+            tar -xf llvm-10.0.0-m1.zip && mv llvm-10.0.0-m1 third_party/
 
       - name: Build
         run: |
@@ -50,4 +47,36 @@ jobs:
             cd build && cmake .. && make -j && cd ..
 
       - name: Test
-        run: sh ./build/run_tests.sh
+        run: ./build/tests/InheritanceUnitTests/ComplexCallMethodTest/complex_call_method_test
+
+
+  Build_And_Test_Linux:
+    # The type of runner that the job will run on
+    runs-on: ubuntu-22.04
+
+    # Steps represent a sequence of tasks that will be executed as part of the job
+    steps:
+      # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
+      - name: Checkout Repo
+        uses: actions/checkout@v2
+        with:
+            lfs: true
+
+      # Runs a set of commands using the runners shell
+      - name: Install Dependencies
+        run: |
+            git lfs checkout
+
+            sudo apt update
+            sudo apt install libgflags-dev
+            sudo apt install libgoogle-glog-dev
+            sudo apt install default-jre
+
+            wget https://github.com/jim19930609/Jack2LLVM/releases/download/llvm/taichi-llvm-10.0.0-linux.zip
+            unzip taichi-llvm-10.0.0-linux.zip && mv taichi-llvm-10.0.0-linux third_party/
+      - name: Build
+        run: |
+            mkdir -p build
+            cd build && cmake .. && make -j && cd ..
+      - name: Test
+        run: ./build/tests/InheritanceUnitTests/ComplexCallMethodTest/complex_call_method_test
