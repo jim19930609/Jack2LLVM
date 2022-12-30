@@ -64,6 +64,7 @@ jobs:
         run: |
             sudo apt update
             sudo apt install aptitude
+            sudo apt install clang
             
             sudo aptitude update
             sudo aptitude install -y libgflags-dev
@@ -72,9 +73,12 @@ jobs:
 
             wget https://github.com/jim19930609/Jack2LLVM/releases/download/llvm/taichi-llvm-10.0.0-linux.zip
             unzip taichi-llvm-10.0.0-linux.zip && mv taichi-llvm-10.0.0-linux third_party/
+            
       - name: Build
         run: |
             mkdir -p build
             cd build && cmake .. && make -j && cd ..
+        env:
+            CXX: clang++
       - name: Test
         run: ./build/tests/InheritanceUnitTests/ComplexCallMethodTest/complex_call_method_test
