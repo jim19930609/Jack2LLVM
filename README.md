@@ -63,7 +63,7 @@ brew install wget
 ```
 sudo apt update
 sudo apt install aptitude
-sudo apt install clang
+sudo apt install clang-11
 
 sudo aptitude update
 sudo aptitude install -y libgflags-dev
@@ -73,7 +73,7 @@ sudo aptitude install -y default-jre
 
 Set default compiler to clang
 ```
-export CXX=clang++
+export CXX=clang++-11
 ```
 
 3. Download pre-compiled llvm library
