@@ -64,7 +64,7 @@ jobs:
         run: |
             sudo apt update
             sudo apt install aptitude
-            sudo apt install clang
+            sudo apt install clang-11
             
             sudo aptitude update
             sudo aptitude install -y libgflags-dev
@@ -79,6 +79,6 @@ jobs:
             mkdir -p build
             cd build && cmake .. && make -j && cd ..
         env:
-            CXX: clang++
+            CXX: clang++-11
       - name: Test
         run: ./build/tests/InheritanceUnitTests/ComplexCallMethodTest/complex_call_method_test
