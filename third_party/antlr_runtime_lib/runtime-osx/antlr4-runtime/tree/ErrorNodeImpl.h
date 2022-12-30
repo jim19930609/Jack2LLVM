@@ -1,3 +1,33 @@
-version https://git-lfs.github.com/spec/v1
-oid sha256:d79d65bcf1804674d5ae84fa213503e1fa9a81293c2f0d2a381ea7dc32a5bfba
-size 1019
+﻿/* Copyright (c) 2012-2017 The ANTLR Project. All rights reserved.
+ * Use of this file is governed by the BSD 3-clause license that
+ * can be found in the LICENSE.txt file in the project root.
+ */
+
+#pragma once
+
+#include "tree/ErrorNode.h"
+#include "tree/TerminalNodeImpl.h"
+#include "misc/Interval.h"
+
+#include "support/Any.h"
+
+namespace antlr4 {
+namespace tree {
+
+  /// <summary>
+  /// Represents a token that was consumed during resynchronization
+  ///  rather than during a valid match operation. For example,
+  ///  we will create this kind of a node during single token insertion
+  ///  and deletion as well as during "consume until error recovery set"
+  ///  upon no viable alternative exceptions.
+  /// </summary>
+  class ANTLR4CPP_PUBLIC ErrorNodeImpl : public virtual TerminalNodeImpl, public virtual ErrorNode {
+  public:
+    ErrorNodeImpl(Token *token);
+    ~ErrorNodeImpl() override;
+
+    virtual antlrcpp::Any accept(ParseTreeVisitor *visitor) override;
+  };
+
+} // namespace tree
+} // namespace antlr4

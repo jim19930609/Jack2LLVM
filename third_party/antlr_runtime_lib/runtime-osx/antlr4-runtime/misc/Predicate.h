@@ -1,3 +1,21 @@
-version https://git-lfs.github.com/spec/v1
-oid sha256:a4b549df36b63cdf8cef392f0e22f23a3b7a61f859a3e0b87d68d5b57db529b4
-size 446
+/* Copyright (c) 2012-2017 The ANTLR Project. All rights reserved.
+ * Use of this file is governed by the BSD 3-clause license that
+ * can be found in the LICENSE.txt file in the project root.
+ */
+
+#pragma once
+
+#include "antlr4-common.h"
+
+namespace antlr4 {
+namespace misc {
+
+  class ANTLR4CPP_PUBLIC Predicate {
+  public:
+    virtual ~Predicate();
+
+    virtual bool test(tree::ParseTree *t) = 0;
+  };
+
+} // namespace tree
+} // namespace antlr4

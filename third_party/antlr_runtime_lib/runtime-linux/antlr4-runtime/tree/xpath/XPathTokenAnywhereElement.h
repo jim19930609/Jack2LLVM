@@ -1,3 +1,25 @@
-version https://git-lfs.github.com/spec/v1
-oid sha256:48051f5d170c729f5bd6e500e665146605993369304cbb2ab26b7f6266abac91
-size 631
+/* Copyright (c) 2012-2017 The ANTLR Project. All rights reserved.
+ * Use of this file is governed by the BSD 3-clause license that
+ * can be found in the LICENSE.txt file in the project root.
+ */
+
+#pragma once
+
+#include "XPathElement.h"
+
+namespace antlr4 {
+namespace tree {
+namespace xpath {
+
+  class ANTLR4CPP_PUBLIC XPathTokenAnywhereElement : public XPathElement {
+  protected:
+    int tokenType = 0;
+  public:
+    XPathTokenAnywhereElement(const std::string &tokenName, int tokenType);
+
+    virtual std::vector<ParseTree *> evaluate(ParseTree *t) override;
+  };
+
+} // namespace xpath
+} // namespace tree
+} // namespace antlr4

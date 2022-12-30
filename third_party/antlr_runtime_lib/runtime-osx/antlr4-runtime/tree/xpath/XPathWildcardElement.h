@@ -1,3 +1,23 @@
-version https://git-lfs.github.com/spec/v1
-oid sha256:bbb4a77ccc8feb8e10b6d123a76d6f95291b365f47f57d3c53910644b2c9a900
-size 542
+/* Copyright (c) 2012-2017 The ANTLR Project. All rights reserved.
+ * Use of this file is governed by the BSD 3-clause license that
+ * can be found in the LICENSE.txt file in the project root.
+ */
+
+#pragma once
+
+#include "XPathElement.h"
+
+namespace antlr4 {
+namespace tree {
+namespace xpath {
+
+  class ANTLR4CPP_PUBLIC XPathWildcardElement : public XPathElement {
+  public:
+    XPathWildcardElement();
+
+    virtual std::vector<ParseTree *> evaluate(ParseTree *t) override;
+  };
+
+} // namespace xpath
+} // namespace tree
+} // namespace antlr4

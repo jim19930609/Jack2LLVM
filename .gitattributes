@@ -1,2 +1,0 @@
-third_party/antlr-4.9.3-complete.jar filter=lfs diff=lfs merge=lfs -text
-third_party/antlr_runtime_lib/** filter=lfs diff=lfs merge=lfs -text

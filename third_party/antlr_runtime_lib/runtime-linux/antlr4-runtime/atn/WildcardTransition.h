@@ -1,3 +1,25 @@
-version https://git-lfs.github.com/spec/v1
-oid sha256:e087c50e1b4dffd294ac464dbfeedd2ff2ba37ed52657fdafa4ffe650e7d1579
-size 676
+﻿/* Copyright (c) 2012-2017 The ANTLR Project. All rights reserved.
+ * Use of this file is governed by the BSD 3-clause license that
+ * can be found in the LICENSE.txt file in the project root.
+ */
+
+#pragma once
+
+#include "atn/Transition.h"
+
+namespace antlr4 {
+namespace atn {
+
+  class ANTLR4CPP_PUBLIC WildcardTransition final : public Transition {
+  public:
+    WildcardTransition(ATNState *target);
+
+    virtual SerializationType getSerializationType() const override;
+
+    virtual bool matches(size_t symbol, size_t minVocabSymbol, size_t maxVocabSymbol) const override;
+
+    virtual std::string toString() const override;
+  };
+
+} // namespace atn
+} // namespace antlr4

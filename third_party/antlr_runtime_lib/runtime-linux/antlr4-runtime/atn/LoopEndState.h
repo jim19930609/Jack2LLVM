@@ -1,3 +1,22 @@
-version https://git-lfs.github.com/spec/v1
-oid sha256:6704ba569ec0e230a03dad6c7523dc67e080bb996163a58c78339829373e39d6
-size 520
+﻿/* Copyright (c) 2012-2017 The ANTLR Project. All rights reserved.
+ * Use of this file is governed by the BSD 3-clause license that
+ * can be found in the LICENSE.txt file in the project root.
+ */
+
+#pragma once
+
+#include "atn/ATNState.h"
+
+namespace antlr4 {
+namespace atn {
+
+  /// Mark the end of a * or + loop.
+  class ANTLR4CPP_PUBLIC LoopEndState final : public ATNState {
+  public:
+    ATNState *loopBackState = nullptr;
+
+    virtual size_t getStateType() override;
+  };
+
+} // namespace atn
+} // namespace antlr4

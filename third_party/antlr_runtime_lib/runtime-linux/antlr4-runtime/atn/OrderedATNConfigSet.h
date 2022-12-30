@@ -1,3 +1,20 @@
-version https://git-lfs.github.com/spec/v1
-oid sha256:ce1d1b29a30ce8ab8c8df3a24cef02430cb52e603b93f9ae7c729363dd2489f5
-size 489
+﻿/* Copyright (c) 2012-2017 The ANTLR Project. All rights reserved.
+ * Use of this file is governed by the BSD 3-clause license that
+ * can be found in the LICENSE.txt file in the project root.
+ */
+
+#pragma once
+
+#include "atn/ATNConfigSet.h"
+#include "atn/ATNConfig.h"
+
+namespace antlr4 {
+namespace atn {
+
+  class ANTLR4CPP_PUBLIC OrderedATNConfigSet : public ATNConfigSet {
+  protected:
+    virtual size_t getHash(ATNConfig *c) override;
+  };
+
+} // namespace atn
+} // namespace antlr4

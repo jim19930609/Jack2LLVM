@@ -1,3 +1,22 @@
-version https://git-lfs.github.com/spec/v1
-oid sha256:c40082de73fe5800b172cd58556c558174187e330dd34eb5e44379437198187b
-size 635
+/* Copyright (c) 2012-2017 The ANTLR Project. All rights reserved.
+ * Use of this file is governed by the BSD 3-clause license that
+ * can be found in the LICENSE.txt file in the project root.
+ */
+
+#pragma once
+
+#include "BaseErrorListener.h"
+
+namespace antlr4 {
+namespace tree {
+namespace xpath {
+
+  class ANTLR4CPP_PUBLIC XPathLexerErrorListener : public BaseErrorListener {
+  public:
+    virtual void syntaxError(Recognizer *recognizer, Token *offendingSymbol, size_t line,
+      size_t charPositionInLine, const std::string &msg, std::exception_ptr e) override;
+  };
+
+} // namespace xpath
+} // namespace tree
+} // namespace antlr4

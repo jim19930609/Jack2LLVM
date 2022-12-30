@@ -1,3 +1,20 @@
-version https://git-lfs.github.com/spec/v1
-oid sha256:f4ab16d9de4ebf92ac93e2eaa79a5eec25fc7b31a75ccc067dbf134fd7953917
-size 439
+﻿/* Copyright (c) 2012-2017 The ANTLR Project. All rights reserved.
+ * Use of this file is governed by the BSD 3-clause license that
+ * can be found in the LICENSE.txt file in the project root.
+ */
+
+#pragma once
+
+#include "antlr4-common.h"
+
+namespace antlr4 {
+namespace atn {
+
+  /// Represents the type of recognizer an ATN applies to.
+  enum class ATNType {
+    LEXER = 0,
+    PARSER = 1,
+  };
+
+} // namespace atn
+} // namespace antlr4

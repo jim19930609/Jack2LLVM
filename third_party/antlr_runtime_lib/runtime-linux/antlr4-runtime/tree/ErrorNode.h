@@ -1,3 +1,19 @@
-version https://git-lfs.github.com/spec/v1
-oid sha256:d3279e0a584218928f58aa1042bfd4cfeea2a2bfb21df1d4309cbf6f4940b352
-size 436
+﻿/* Copyright (c) 2012-2017 The ANTLR Project. All rights reserved.
+ * Use of this file is governed by the BSD 3-clause license that
+ * can be found in the LICENSE.txt file in the project root.
+ */
+
+#pragma once
+
+#include "tree/TerminalNode.h"
+
+namespace antlr4 {
+namespace tree {
+
+  class ANTLR4CPP_PUBLIC ErrorNode : public virtual TerminalNode {
+  public:
+    ~ErrorNode() override;
+  };
+
+} // namespace tree
+} // namespace antlr4

@@ -1,3 +1,24 @@
-version https://git-lfs.github.com/spec/v1
-oid sha256:572b946a7e7d1fe2b24e8e4cebf57de008c18ffd7c3362f51ac182c71021b35b
-size 565
+﻿/* Copyright (c) 2012-2017 The ANTLR Project. All rights reserved.
+ * Use of this file is governed by the BSD 3-clause license that
+ * can be found in the LICENSE.txt file in the project root.
+ */
+
+#pragma once
+
+#include "atn/ATNState.h"
+
+namespace antlr4 {
+namespace atn {
+
+  /// Terminal node of a simple {@code (a|b|c)} block.
+  class ANTLR4CPP_PUBLIC BlockEndState final : public ATNState {
+  public:
+    BlockStartState *startState = nullptr;
+
+    BlockEndState();
+
+    virtual size_t getStateType() override;
+  };
+
+} // namespace atn
+} // namespace antlr4

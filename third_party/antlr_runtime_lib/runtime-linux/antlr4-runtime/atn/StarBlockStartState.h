@@ -1,3 +1,21 @@
-version https://git-lfs.github.com/spec/v1
-oid sha256:b21fb4d906b58b15e6dc93c2d678f50d465c34fd164353fd2688a7d38d997b7b
-size 509
+﻿/* Copyright (c) 2012-2017 The ANTLR Project. All rights reserved.
+ * Use of this file is governed by the BSD 3-clause license that
+ * can be found in the LICENSE.txt file in the project root.
+ */
+
+#pragma once
+
+#include "atn/BlockStartState.h"
+
+namespace antlr4 {
+namespace atn {
+
+  /// The block that begins a closure loop.
+  class ANTLR4CPP_PUBLIC StarBlockStartState final : public BlockStartState {
+
+  public:
+    virtual size_t getStateType() override;
+  };
+
+} // namespace atn
+} // namespace antlr4

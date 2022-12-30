@@ -1,3 +1,25 @@
-version https://git-lfs.github.com/spec/v1
-oid sha256:8612bc70ac87f0f4fb647981f8528f0e88440ad65c6e8bbf7c8d7d5fff80810f
-size 548
+﻿/* Copyright (c) 2012-2017 The ANTLR Project. All rights reserved.
+ * Use of this file is governed by the BSD 3-clause license that
+ * can be found in the LICENSE.txt file in the project root.
+ */
+
+#pragma once
+
+#include "atn/ATNState.h"
+
+namespace antlr4 {
+namespace atn {
+
+  class ANTLR4CPP_PUBLIC RuleStartState final : public ATNState {
+  public:
+    RuleStartState();
+
+    RuleStopState *stopState = nullptr;
+    bool isLeftRecursiveRule = false;
+
+    virtual size_t getStateType() override;
+
+  };
+
+} // namespace atn
+} // namespace antlr4

@@ -1,3 +1,30 @@
-version https://git-lfs.github.com/spec/v1
-oid sha256:d2e1749c21f77da7493e32a5965ec7154c2653a84efa0b3f9429907d7d5e89ac
-size 606
+﻿/* Copyright (c) 2012-2017 The ANTLR Project. All rights reserved.
+ * Use of this file is governed by the BSD 3-clause license that
+ * can be found in the LICENSE.txt file in the project root.
+ */
+
+#pragma once
+
+#include "atn/ATNState.h"
+
+namespace antlr4 {
+namespace atn {
+
+  class ANTLR4CPP_PUBLIC DecisionState : public ATNState {
+  public:
+    int decision;
+    bool nonGreedy;
+
+  private:
+    void InitializeInstanceFields();
+
+  public:
+    DecisionState() {
+      InitializeInstanceFields();
+    }
+
+    virtual std::string toString() const override;
+  };
+
+} // namespace atn
+} // namespace antlr4

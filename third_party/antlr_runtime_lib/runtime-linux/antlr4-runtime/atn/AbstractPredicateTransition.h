@@ -1,3 +1,24 @@
-version https://git-lfs.github.com/spec/v1
-oid sha256:cead7814d86aab6e691fe98739e60190d387bb93d350e856916a53fb31246946
-size 520
+﻿/* Copyright (c) 2012-2017 The ANTLR Project. All rights reserved.
+ * Use of this file is governed by the BSD 3-clause license that
+ * can be found in the LICENSE.txt file in the project root.
+ */
+
+#pragma once
+
+#include "atn/Transition.h"
+
+namespace antlr4 {
+namespace atn {
+
+  class ANTState;
+
+  class ANTLR4CPP_PUBLIC AbstractPredicateTransition : public Transition {
+
+  public:
+    AbstractPredicateTransition(ATNState *target);
+    ~AbstractPredicateTransition();
+
+  };
+
+} // namespace atn
+} // namespace antlr4

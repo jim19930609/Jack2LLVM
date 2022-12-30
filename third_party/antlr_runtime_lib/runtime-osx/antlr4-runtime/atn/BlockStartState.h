@@ -1,3 +1,21 @@
-version https://git-lfs.github.com/spec/v1
-oid sha256:aa03d1f6bcdd7da516832509e749d747d9eba00940930100ea1fdb3f8aa741dd
-size 520
+﻿/* Copyright (c) 2012-2017 The ANTLR Project. All rights reserved.
+ * Use of this file is governed by the BSD 3-clause license that
+ * can be found in the LICENSE.txt file in the project root.
+ */
+
+#pragma once
+
+#include "atn/DecisionState.h"
+
+namespace antlr4 {
+namespace atn {
+
+  ///  The start of a regular {@code (...)} block.
+  class ANTLR4CPP_PUBLIC BlockStartState : public DecisionState {
+  public:
+    ~BlockStartState();
+    BlockEndState *endState = nullptr;
+  };
+
+} // namespace atn
+} // namespace antlr4

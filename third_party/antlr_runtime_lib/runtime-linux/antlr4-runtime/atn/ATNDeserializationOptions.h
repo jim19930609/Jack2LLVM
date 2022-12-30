@@ -1,3 +1,50 @@
-version https://git-lfs.github.com/spec/v1
-oid sha256:645980ea98f4ffe419be7ad66c34987de879da98a6f1ac039c225ca004730368
-size 1224
+﻿/* Copyright (c) 2012-2017 The ANTLR Project. All rights reserved.
+ * Use of this file is governed by the BSD 3-clause license that
+ * can be found in the LICENSE.txt file in the project root.
+ */
+
+#pragma once
+
+#include "antlr4-common.h"
+
+namespace antlr4 {
+namespace atn {
+
+  class ANTLR4CPP_PUBLIC ATNDeserializationOptions {
+  private:
+    static const ATNDeserializationOptions defaultOptions;
+
+    bool readOnly;
+    bool verifyATN;
+    bool generateRuleBypassTransitions;
+
+  public:
+    ATNDeserializationOptions();
+    ATNDeserializationOptions(ATNDeserializationOptions *options);
+    ATNDeserializationOptions(ATNDeserializationOptions const&) = default;
+    virtual ~ATNDeserializationOptions();
+    ATNDeserializationOptions& operator=(ATNDeserializationOptions const&) = default;
+
+    static const ATNDeserializationOptions& getDefaultOptions();
+
+    bool isReadOnly();
+
+    void makeReadOnly();
+
+    bool isVerifyATN();
+
+    void setVerifyATN(bool verify);
+
+    bool isGenerateRuleBypassTransitions();
+
+    void setGenerateRuleBypassTransitions(bool generate);
+
+  protected:
+    virtual void throwIfReadOnly();
+
+  private:
+    void InitializeInstanceFields();
+  };
+
+} // namespace atn
+} // namespace antlr4
