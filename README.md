@@ -51,17 +51,29 @@ git clone https://github.com/jim19930609/Jack2LLVM.git
 ```
 
 2. Install dependencies
-MacOS:
+
+[MacOS]
 ```
 brew install glog
 brew install java
 brew install wget
 ```
 
-Linux:
+[Linux]
 ```
-sudo apt-get install glog
-sudo apt-get install java
+sudo apt update
+sudo apt install aptitude
+sudo apt install clang
+
+sudo aptitude update
+sudo aptitude install -y libgflags-dev
+sudo aptitude install -y libgoogle-glog-dev
+sudo aptitude install -y default-jre
+```
+
+Set default compiler to clang
+```
+export CXX=clang++
 ```
 
 3. Download pre-compiled llvm library
@@ -77,27 +89,13 @@ wget https://github.com/jim19930609/Jack2LLVM/releases/download/llvm/taichi-llvm
 unzip taichi-llvm-10.0.0-linux.zip && mv taichi-llvm-10.0.0-linux Jack2LLVM/third_party
 ```
 
-4. (Linux only) 安装Antlr Runtime
-Antlr官方不提供Linux预编译包，我们需要自己从源码编译。注意我们用的是4.9.3版的Antlr
+4. 编译Jack2LLVM
 ```
-cd Jack2LLVM/src/runtime_lib/
-mkdir source_code && cd source_code
-wget https://www.antlr.org/download/antlr4-cpp-runtime-4.9.3-source.zip && unzip antlr4-cpp-runtime-4.9.3-source.zip
-mkdir build && mkdir run && cd build
-cmake .. -DANTLR_JAR_LOCATION=../../antlr-4.9.3-complete.jar -DWITH_DEMO=True
-make
-DESTDIR=../run make install
-cp -r ../run/usr/local/include/antlr4-runtime ../../runtime-linux/
-cp -r ../run/usr/local/lib ../../runtime-linux/
+mkdir build 
+cd build && cmake .. && make -j
 ```
 
-5. 编译Jack2LLVM
-```
-cd ../../../../
-make
-```
-
-6. 编译并运行Demo
+5. 编译并运行Demo
 ```
 cd tests/Demo/MineSweeping/
 make
